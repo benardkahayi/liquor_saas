@@ -1,0 +1,478 @@
+// This is your Prisma schema file. It defines every table (as a "model")
+// and Prisma turns this into real PostgreSQL tables + a type-safe query client.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =========================================================================
+// PLATFORM-LEVEL TABLES
+// These are NOT tenant-scoped — they belong to the platform itself.
+// =========================================================================
+
+// One row per business (e.g. "Joe's Liquor Store", "Acme Clothing Co.")
+model Tenant {
+  id        String   @id @default(uuid())
+  name      String                     // "Joe's Liquor Store"
+  slug      String   @unique           // "joes-liquor" -> used in subdomain routing
+  industry  String   @default("liquor_store") // which industry preset this tenant uses
+  status    TenantStatus @default(ACTIVE)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations: everything below "belongs to" this tenant
+  users         User[]
+  settings      TenantSettings?
+  subscription  Subscription?
+  products      Product[]
+  categories    Category[]
+  customers     Customer[]
+  suppliers     Supplier[]
+  purchases     Purchase[]
+  sales         Sale[]
+  expenses      Expense[]
+  inventoryTx   InventoryTransaction[]
+  notifications Notification[]
+  auditLogs     AuditLog[]
+  roles         Role[]
+
+  @@map("tenants")
+}
+
+enum TenantStatus {
+  ACTIVE
+  SUSPENDED
+  TRIAL
+  CANCELLED
+}
+
+// Per-tenant branding & configuration — a 1-to-1 extension of Tenant.
+// Kept separate from Tenant itself so the core Tenant table stays lean
+// and platform-level (Super Admin queries) don't need to join branding data.
+model TenantSettings {
+  id            String  @id @default(uuid())
+  tenantId      String  @unique
+  tenant        Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  logoUrl       String?
+  phone         String?
+  address       String?
+  currency      String  @default("USD")
+  primaryColor  String  @default("#0F6E56")
+  receiptFooter String?
+  enabledModules Json   @default("[\"products\",\"sales\",\"inventory\",\"customers\",\"suppliers\",\"expenses\",\"reports\"]")
+
+  updatedAt     DateTime @updatedAt
+
+  @@map("tenant_settings")
+}
+
+// Billing/plan info per tenant.
+model Subscription {
+  id            String   @id @default(uuid())
+  tenantId      String   @unique
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  plan          SubscriptionPlan @default(FREE)
+  status        SubscriptionStatus @default(ACTIVE)
+  currentPeriodEnd DateTime?
+  seatLimit     Int      @default(3)
+  productLimit  Int      @default(100)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("subscriptions")
+}
+
+enum SubscriptionPlan {
+  FREE
+  STARTER
+  PRO
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+}
+
+// =========================================================================
+// AUTH & ACCESS CONTROL
+// =========================================================================
+
+// A login-capable person. Tenant-scoped EXCEPT Super Admins, who have
+// tenantId = null since they operate across all tenants.
+model User {
+  id           String   @id @default(uuid())
+  tenantId     String?  // nullable — Super Admins aren't tied to one tenant
+  tenant       Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  email        String   @unique
+  passwordHash String
+  fullName     String
+  isSuperAdmin Boolean  @default(false)
+  isActive     Boolean  @default(true)
+
+  roleId       String?
+  role         Role?    @relation(fields: [roleId], references: [id])
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  sales        Sale[]
+  auditLogs    AuditLog[]
+
+  @@index([tenantId])
+  @@map("users")
+}
+
+// A named role WITHIN a tenant (e.g. "Owner", "Cashier"). Tenants can
+// eventually define custom roles beyond the three defaults.
+model Role {
+  id          String   @id @default(uuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  name        String   // "Owner", "Cashier", "Manager", etc.
+  isSystem    Boolean  @default(false) // true for the built-in Owner/Cashier roles
+
+  users       User[]
+  permissions RolePermission[]
+
+  @@unique([tenantId, name])
+  @@map("roles")
+}
+
+// The full catalog of permissions the system understands. Global, not
+// tenant-scoped — every tenant picks from the same permission catalog.
+model Permission {
+  id     String @id @default(uuid())
+  key    String @unique // e.g. "products.create", "reports.view", "settings.edit"
+  label  String          // human-readable: "Create products"
+
+  roles  RolePermission[]
+
+  @@map("permissions")
+}
+
+// Join table: which permissions does a given role have.
+model RolePermission {
+  roleId       String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permissionId String
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+// Records sensitive actions for accountability (e.g. "user X deleted product Y").
+model AuditLog {
+  id        String   @id @default(uuid())
+  tenantId  String?
+  tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+
+  action    String   // "product.delete", "sale.void", etc.
+  entityType String
+  entityId  String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([tenantId])
+  @@map("audit_logs")
+}
+
+// =========================================================================
+// PRODUCTS & CATEGORIES
+// =========================================================================
+
+model Category {
+  id       String    @id @default(uuid())
+  tenantId String
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  name     String
+  products Product[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@map("categories")
+}
+
+model Product {
+  id              String   @id @default(uuid())
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  name            String
+  categoryId      String?
+  category        Category? @relation(fields: [categoryId], references: [id])
+  brand           String?
+  sku             String?
+  barcode         String?
+  purchasePrice   Decimal  @db.Decimal(10, 2)
+  sellingPrice    Decimal  @db.Decimal(10, 2)
+  stockQuantity   Int      @default(0)
+  minStockLevel   Int      @default(5)
+  imageUrl        String?
+  status          ProductStatus @default(ACTIVE)
+
+  supplierId      String?
+  supplier        Supplier? @relation(fields: [supplierId], references: [id])
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  saleItems       SaleItem[]
+  purchaseItems   PurchaseItem[]
+  inventoryTx     InventoryTransaction[]
+
+  @@unique([tenantId, sku])
+  @@index([tenantId])
+  @@index([tenantId, stockQuantity])
+  @@map("products")
+}
+
+enum ProductStatus {
+  ACTIVE
+  DISCONTINUED
+}
+
+// =========================================================================
+// CUSTOMERS & SUPPLIERS
+// =========================================================================
+
+model Customer {
+  id         String   @id @default(uuid())
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  fullName   String
+  phone      String?
+  email      String?
+  address    String?
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  sales      Sale[]
+
+  @@index([tenantId])
+  @@map("customers")
+}
+
+model Supplier {
+  id            String   @id @default(uuid())
+  tenantId      String
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  name          String
+  phone         String?
+  email         String?
+  address       String?
+  amountOwed    Decimal  @default(0) @db.Decimal(10, 2)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  products      Product[]
+  purchases     Purchase[]
+
+  @@index([tenantId])
+  @@map("suppliers")
+}
+
+// =========================================================================
+// PURCHASES (stock coming IN from a supplier)
+// =========================================================================
+
+model Purchase {
+  id          String   @id @default(uuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  supplierId  String
+  supplier    Supplier @relation(fields: [supplierId], references: [id])
+
+  totalAmount Decimal  @db.Decimal(10, 2)
+  amountPaid  Decimal  @default(0) @db.Decimal(10, 2)
+  status      PurchaseStatus @default(PENDING)
+
+  createdAt   DateTime @default(now())
+
+  items       PurchaseItem[]
+
+  @@index([tenantId])
+  @@map("purchases")
+}
+
+enum PurchaseStatus {
+  PENDING
+  RECEIVED
+  PARTIALLY_PAID
+  PAID
+}
+
+model PurchaseItem {
+  id          String   @id @default(uuid())
+  purchaseId  String
+  purchase    Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id])
+
+  quantity    Int
+  unitCost    Decimal  @db.Decimal(10, 2)
+
+  @@map("purchase_items")
+}
+
+// =========================================================================
+// SALES (stock going OUT to a customer)
+// =========================================================================
+
+model Sale {
+  id             String   @id @default(uuid())
+  tenantId       String
+  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  customerId     String?
+  customer       Customer? @relation(fields: [customerId], references: [id])
+
+  cashierId      String
+  cashier        User     @relation(fields: [cashierId], references: [id])
+
+  subtotal       Decimal  @db.Decimal(10, 2)
+  discount       Decimal  @default(0) @db.Decimal(10, 2)
+  tax            Decimal  @default(0) @db.Decimal(10, 2)
+  total          Decimal  @db.Decimal(10, 2)
+  status         SaleStatus @default(COMPLETED)
+
+  createdAt      DateTime @default(now())
+
+  items          SaleItem[]
+  payments       Payment[]
+
+  @@index([tenantId])
+  @@index([tenantId, createdAt])
+  @@map("sales")
+}
+
+enum SaleStatus {
+  COMPLETED
+  VOIDED
+  REFUNDED
+}
+
+model SaleItem {
+  id         String  @id @default(uuid())
+  saleId     String
+  sale       Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+
+  productId  String
+  product    Product @relation(fields: [productId], references: [id])
+
+  quantity   Int
+  unitPrice  Decimal @db.Decimal(10, 2)
+  lineTotal  Decimal @db.Decimal(10, 2)
+
+  @@map("sale_items")
+}
+
+model Payment {
+  id            String   @id @default(uuid())
+  saleId        String
+  sale          Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+
+  method        PaymentMethod
+  amount        Decimal  @db.Decimal(10, 2)
+  createdAt     DateTime @default(now())
+
+  @@map("payments")
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  MOBILE_MONEY
+  OTHER
+}
+
+// =========================================================================
+// INVENTORY TRACKING
+// =========================================================================
+
+// Every stock change (from a sale, purchase, or manual adjustment) creates
+// one row here. This is our audit trail for "why does this product have
+// this stock level right now."
+model InventoryTransaction {
+  id          String   @id @default(uuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id])
+
+  type        InventoryTxType
+  quantity    Int      // positive = stock in, negative = stock out
+  reason      String?  // "sale #123", "damaged", "manual recount", etc.
+
+  createdAt   DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([productId])
+  @@map("inventory_transactions")
+}
+
+enum InventoryTxType {
+  PURCHASE_IN
+  SALE_OUT
+  ADJUSTMENT
+  RETURN
+}
+
+// =========================================================================
+// EXPENSES
+// =========================================================================
+
+model Expense {
+  id          String   @id @default(uuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  category    String
+  amount      Decimal  @db.Decimal(10, 2)
+  description String?
+  date        DateTime @default(now())
+
+  createdAt   DateTime @default(now())
+
+  @@index([tenantId])
+  @@map("expenses")
+}
+
+// =========================================================================
+// NOTIFICATIONS (e.g. low-stock alerts)
+// =========================================================================
+
+model Notification {
+  id        String   @id @default(uuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  type      String   // "low_stock", "purchase_due", etc.
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([tenantId])
+  @@map("notifications")
+}
