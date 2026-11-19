@@ -1,0 +1,29 @@
+# Render Blueprint for the backend API. In Render: New → Blueprint → pick this repo.
+services:
+  - type: web
+    name: bizsmart-api
+    runtime: node
+    region: frankfurt          # closest Render region to the Supabase database (Ireland)
+    plan: free                 # switch to "starter" for real customers (no sleeping)
+    rootDir: backend
+    buildCommand: npm install --include=dev && npx prisma generate && npm run build && npx prisma migrate deploy
+    # The code imports "@/..." paths; tsconfig-paths maps them to dist/ at runtime.
+    startCommand: TS_NODE_BASEURL=./dist node -r tsconfig-paths/register dist/server.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false            # paste from your backend/.env (Supabase pooler, port 6543)
+      - key: DIRECT_URL
+        sync: false            # paste from your backend/.env (Supabase direct, port 5432)
+      - key: APP_DOMAIN
+        sync: false            # your Vercel address without https://, e.g. liquor-saas.vercel.app
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: JWT_ACCESS_EXPIRES_IN
+        value: 15m
+      - key: JWT_REFRESH_EXPIRES_IN
+        value: 7d

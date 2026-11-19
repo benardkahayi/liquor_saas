@@ -3,7 +3,14 @@
 // gets sent as the X-Tenant-Slug header on every API request.
 const APP_DOMAIN = import.meta.env.VITE_APP_DOMAIN || "localhost";
 
+// Set VITE_USE_SUBDOMAINS=false to run every business on one address (e.g. a
+// free *.vercel.app URL, which can't have its own subdomains). The backend
+// still knows the business from the logged-in user's token, so nothing else
+// changes — only the per-business address is skipped.
+export const SUBDOMAINS_ENABLED = import.meta.env.VITE_USE_SUBDOMAINS !== "false";
+
 export function getCurrentSubdomain(): string | null {
+  if (!SUBDOMAINS_ENABLED) return null;
   const hostname = window.location.hostname;
   if (hostname === APP_DOMAIN || hostname === `www.${APP_DOMAIN}`) return null;
   if (hostname.endsWith(`.${APP_DOMAIN}`)) {
@@ -19,10 +26,12 @@ function originFor(host: string): string {
 }
 
 export function buildTenantOrigin(slug: string): string {
+  if (!SUBDOMAINS_ENABLED) return window.location.origin;
   return originFor(`${slug}.${APP_DOMAIN}`);
 }
 
 export function buildBaseOrigin(): string {
+  if (!SUBDOMAINS_ENABLED) return window.location.origin;
   return originFor(APP_DOMAIN);
 }
 

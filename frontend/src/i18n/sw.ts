@@ -47,7 +47,7 @@ export const sw: Record<string, string> = {
   "login.submit": "Ingia",
   "login.submitting": "Inaingia…",
   "login.error.invalid": "Barua pepe au nenosiri sio sahihi",
-  "login.error.network": "Haiwezi kufikia seva. Je, seva iko kwenye http://localhost:4000?",
+  "login.error.network": "Haiwezi kufikia seva. Angalia mtandao wako kisha ujaribu tena.",
   "login.error.wrongBusiness": "Akaunti hii haina ruhusa ya kufikia biashara hii.",
   "register.title": "Fungua akaunti yako",
   "register.subtitle": "Anzisha biashara mpya kwa dakika chache",

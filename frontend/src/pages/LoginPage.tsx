@@ -52,7 +52,7 @@ export function LoginPage() {
         setError(
           t(
             "login.error.network",
-            "Cannot reach the server. Is the backend running on http://localhost:4000?"
+            "Cannot reach the server. Check your internet connection and try again."
           )
         );
       } else {
