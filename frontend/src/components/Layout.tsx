@@ -53,6 +53,7 @@ const NAV_ITEMS: (NavItem & { for: NavAudience })[] = [
   { to: "/suppliers", labelKey: "nav.suppliers", labelEn: "Suppliers", icon: Truck, color: "text-amber-500", for: "all" },
   { to: "/expenses", labelKey: "nav.expenses", labelEn: "Expenses", icon: Receipt, color: "text-red-500", for: "all" },
   { to: "/reports", labelKey: "nav.reports", labelEn: "Reports", icon: BarChart2, color: "text-purple-500", for: "shop" },
+  { to: "/plan", labelKey: "nav.plan", labelEn: "Plan", icon: CreditCard, color: "text-orange-500", for: "all" },
   { to: "/settings", labelKey: "nav.settings", labelEn: "Settings", icon: Settings, color: "text-gray-500", for: "all" },
 ];
 
@@ -68,7 +69,7 @@ const SUPER_ADMIN_NAV_ITEMS: NavItem[] = [
   { to: "/super-admin/settings", labelKey: "nav.settings", labelEn: "Settings", icon: Settings, color: "text-gray-500" },
 ];
 
-const RESTRICTED_FOR_CASHIER = ["/suppliers", "/expenses", "/reports", "/settings"];
+const RESTRICTED_FOR_CASHIER = ["/suppliers", "/expenses", "/reports", "/settings", "/plan"];
 
 export function Layout({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();

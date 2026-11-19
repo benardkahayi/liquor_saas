@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from 'react'
-import { Plus, Pencil, Trash2, Search, UtensilsCrossed } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Plus, Pencil, Trash2, Search, UtensilsCrossed, Camera, X } from 'lucide-react'
 import { api } from '../api/client'
 import { money, toNum } from '../lib/money'
 import { ErrorBanner, extractErrorMessage } from '../components/ErrorBanner'
 import { Modal } from '../components/Modal'
 import { Pagination } from '../components/Pagination'
+import { menuImageUrl, resizePhoto } from '../lib/menuImage'
 
 interface MenuItem {
   id: string
@@ -14,6 +15,27 @@ interface MenuItem {
   price: string | number
   isAvailable: boolean
   isActive: boolean
+  imageUpdatedAt?: string | null
+}
+
+// Square photo, or a plate icon when the dish has no photo yet.
+function DishThumb ({ src, size = 48 }: { src: string | null, size?: number }) {
+  return src ? (
+    <img
+      src={src}
+      alt=''
+      loading='lazy'
+      style={{ width: size, height: size }}
+      className='shrink-0 rounded-xl object-cover bg-gray-100'
+    />
+  ) : (
+    <div
+      style={{ width: size, height: size }}
+      className='flex shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-300'
+    >
+      <UtensilsCrossed size={Math.round(size * 0.42)} />
+    </div>
+  )
 }
 
 interface PaginationInfo {
@@ -67,6 +89,13 @@ export function RestaurantMenuPage () {
   const [formError, setFormError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
+  // Photo in the form: a newly picked one (resized, as a data URL), or a
+  // request to remove the current one.
+  const [newPhoto, setNewPhoto] = useState<string | null>(null)
+  const [removePhoto, setRemovePhoto] = useState(false)
+  const [preparingPhoto, setPreparingPhoto] = useState(false)
+  const fileInput = useRef<HTMLInputElement>(null)
+
   const loadItems = useCallback(async () => {
     setLoading(true)
     setError(null)
@@ -114,6 +143,8 @@ export function RestaurantMenuPage () {
     setEditing(null)
     setForm(EMPTY_FORM)
     setFormError(null)
+    setNewPhoto(null)
+    setRemovePhoto(false)
     setModalOpen(true)
   }
 
@@ -127,8 +158,34 @@ export function RestaurantMenuPage () {
       isAvailable: item.isAvailable
     })
     setFormError(null)
+    setNewPhoto(null)
+    setRemovePhoto(false)
     setModalOpen(true)
   }
+
+  async function handlePhotoPicked (file: File | undefined) {
+    if (!file) return
+    setFormError(null)
+    setPreparingPhoto(true)
+    try {
+      setNewPhoto(await resizePhoto(file))
+      setRemovePhoto(false)
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : 'Could not use that photo')
+    } finally {
+      setPreparingPhoto(false)
+      if (fileInput.current) fileInput.current.value = ''
+    }
+  }
+
+  function clearPhoto () {
+    setNewPhoto(null)
+    setRemovePhoto(true)
+  }
+
+  // What the form shows: the new photo, else the saved one (unless removed).
+  const formPhoto =
+    newPhoto ?? (editing && !removePhoto ? menuImageUrl(editing) : null)
 
   function validateForm (): string | null {
     if (!form.name.trim()) return 'Item name is required'
@@ -158,11 +215,32 @@ export function RestaurantMenuPage () {
     }
 
     try {
+      let saved: MenuItem
       if (editing) {
-        await api.put(`/restaurant/menu/${editing.id}`, payload)
+        const res = await api.put<{ data: MenuItem }>(`/restaurant/menu/${editing.id}`, payload)
+        saved = res.data.data
       } else {
-        await api.post('/restaurant/menu', payload)
+        const res = await api.post<{ data: MenuItem }>('/restaurant/menu', payload)
+        saved = res.data.data
       }
+
+      try {
+        if (newPhoto) {
+          await api.put(`/restaurant/menu/${saved.id}/image`, { dataUrl: newPhoto })
+        } else if (removePhoto && editing?.imageUpdatedAt) {
+          await api.delete(`/restaurant/menu/${saved.id}/image`)
+        }
+      } catch (err) {
+        // The dish itself is saved. Keep the form open on it (now in edit
+        // mode) so pressing Save again only retries the photo.
+        setEditing(saved)
+        setFormError(
+          extractErrorMessage(err, 'The dish was saved, but the photo did not upload. Press Save to try again.')
+        )
+        await loadItems()
+        return
+      }
+
       setModalOpen(false)
       await Promise.all([loadItems(), loadCategories()])
     } catch (err) {
@@ -296,12 +374,17 @@ export function RestaurantMenuPage () {
                 {items.map(item => (
                   <tr key={item.id} className='hover:bg-gray-50'>
                     <td className='px-5 py-4'>
-                      <p className='font-semibold text-gray-900'>{item.name}</p>
-                      {item.description && (
-                        <p className='mt-0.5 max-w-xs truncate text-xs text-gray-400'>
-                          {item.description}
-                        </p>
-                      )}
+                      <div className='flex items-center gap-3'>
+                        <DishThumb src={menuImageUrl(item)} />
+                        <div className='min-w-0'>
+                          <p className='font-semibold text-gray-900'>{item.name}</p>
+                          {item.description && (
+                            <p className='mt-0.5 max-w-xs truncate text-xs text-gray-400'>
+                              {item.description}
+                            </p>
+                          )}
+                        </div>
+                      </div>
                     </td>
                     <td className='px-5 py-4'>
                       <span className='inline-flex rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700'>
@@ -365,6 +448,52 @@ export function RestaurantMenuPage () {
         >
           <div className='space-y-4'>
             <ErrorBanner message={formError} />
+
+            <div>
+              <span className='mb-1 block text-sm font-medium text-gray-700'>
+                Photo
+              </span>
+              <div className='flex items-center gap-4'>
+                <div className='relative'>
+                  <DishThumb src={formPhoto} size={96} />
+                  {formPhoto && (
+                    <button
+                      type='button'
+                      onClick={clearPhoto}
+                      className='absolute -right-2 -top-2 rounded-full border border-gray-200 bg-white p-1 text-gray-500 shadow-sm hover:text-red-600'
+                      aria-label='Remove photo'
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+                <div className='space-y-1'>
+                  <button
+                    type='button'
+                    onClick={() => fileInput.current?.click()}
+                    disabled={preparingPhoto}
+                    className='flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50'
+                  >
+                    <Camera size={16} />
+                    {preparingPhoto
+                      ? 'Preparing photo...'
+                      : formPhoto
+                        ? 'Change photo'
+                        : 'Take or choose photo'}
+                  </button>
+                  <p className='text-xs text-gray-400'>
+                    Optional. Shows on the menu and at the counter.
+                  </p>
+                </div>
+                <input
+                  ref={fileInput}
+                  type='file'
+                  accept='image/*'
+                  className='hidden'
+                  onChange={e => handlePhotoPicked(e.target.files?.[0])}
+                />
+              </div>
+            </div>
 
             <div>
               <label className='mb-1 block text-sm font-medium text-gray-700'>
@@ -451,7 +580,7 @@ export function RestaurantMenuPage () {
               <button
                 type='button'
                 onClick={handleSave}
-                disabled={saving}
+                disabled={saving || preparingPhoto}
                 className='rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50'
               >
                 {saving ? 'Saving...' : editing ? 'Save changes' : 'Add item'}

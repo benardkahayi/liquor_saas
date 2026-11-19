@@ -3,6 +3,7 @@ import {
   createMenuItemSchema,
   updateMenuItemSchema,
   listMenuItemsQuerySchema,
+  menuItemImageSchema,
   createTableSchema,
   updateTableSchema
 } from './restaurant.validation'
@@ -103,6 +104,66 @@ export async function deactivateMenuItemHandler (
       paramId(req.params.id)
     )
     res.status(204).send()
+  } catch (err) {
+    next(err)
+  }
+}
+
+// ---------------------------------------------------------------------------
+// MENU ITEM PHOTOS
+// ---------------------------------------------------------------------------
+
+export async function setMenuItemImageHandler (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const { dataUrl } = menuItemImageSchema.parse(req.body)
+    const item = await restaurantService.setMenuItemImage(
+      req.user!.tenantId!,
+      paramId(req.params.id),
+      dataUrl
+    )
+    res.status(200).json({ data: item })
+  } catch (err) {
+    next(err)
+  }
+}
+
+export async function removeMenuItemImageHandler (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const item = await restaurantService.removeMenuItemImage(
+      req.user!.tenantId!,
+      paramId(req.params.id)
+    )
+    res.status(200).json({ data: item })
+  } catch (err) {
+    next(err)
+  }
+}
+
+export async function getMenuItemImageHandler (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const { bytes, mime } = await restaurantService.getMenuItemImage(
+      req.user!.tenantId!,
+      paramId(req.params.id)
+    )
+    // The URL carries ?v=<imageUpdatedAt>, so a new photo gets a new URL and
+    // the browser can keep this one for a long time. "private" stops shared
+    // caches (e.g. Vercel's) from storing one business's photo for others.
+    res.set('Content-Type', mime)
+    res.set('Cache-Control', 'private, max-age=31536000, immutable')
+    res.set('X-Content-Type-Options', 'nosniff')
+    res.status(200).send(bytes)
   } catch (err) {
     next(err)
   }

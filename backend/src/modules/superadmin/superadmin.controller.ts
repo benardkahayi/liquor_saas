@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
-import { listTenantsQuerySchema, updateTenantStatusSchema } from "./superadmin.validation";
+import { listTenantsQuerySchema, updateTenantStatusSchema, setTenantPlanSchema } from "./superadmin.validation";
+import { setPlan } from "@/modules/subscriptions/subscriptions.service";
 import * as superAdminService from "./superadmin.service";
 
 export async function listTenantsHandler(req: Request, res: Response, next: NextFunction) {
@@ -41,6 +42,18 @@ export async function getPlatformStatsHandler(_req: Request, res: Response, next
   try {
     const stats = await superAdminService.getPlatformStats();
     res.status(200).json({ data: stats });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// Switch a business onto a plan after its payment has been received.
+export async function setTenantPlanHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { plan } = setTenantPlanSchema.parse(req.body);
+    const tenantId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const subscription = await setPlan(tenantId, plan);
+    res.status(200).json({ data: subscription });
   } catch (err) {
     next(err);
   }

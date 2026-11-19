@@ -10,3 +10,7 @@ export const listTenantsQuerySchema = z.object({
 export const updateTenantStatusSchema = z.object({
   status: z.enum(["ACTIVE", "SUSPENDED", "TRIAL", "CANCELLED"]),
 });
+
+export const setTenantPlanSchema = z.object({
+  plan: z.enum(["FREE", "STARTER", "PRO"]),
+});

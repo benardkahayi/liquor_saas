@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Minus, Plus, Search, Trash2, CheckCircle2, ShoppingBag, UserRound } from 'lucide-react'
+import { Minus, Plus, Search, Trash2, CheckCircle2, ShoppingBag, UserRound, UtensilsCrossed } from 'lucide-react'
 import { api } from '../api/client'
 import { money, toNum } from '../lib/money'
 import { ErrorBanner, extractErrorMessage } from '../components/ErrorBanner'
 import { Modal } from '../components/Modal'
 import { useLanguage } from '../context/LanguageContext'
+import { menuImageUrl } from '../lib/menuImage'
 
 interface MenuItem {
   id: string
@@ -12,6 +13,7 @@ interface MenuItem {
   category: string
   price: string | number
   isAvailable: boolean
+  imageUpdatedAt?: string | null
 }
 
 interface CartLine {
@@ -84,6 +86,9 @@ export function RestaurantCounterPage () {
     [menu]
   )
 
+  // Once any dish has a photo, every tile gets a picture area (a plate icon
+  // when it has no photo) so the grid stays even.
+  const anyPhoto = menu.some(m => m.imageUpdatedAt)
   const visibleMenu = menu.filter(
     m =>
       (!category || m.category === category) &&
@@ -213,25 +218,40 @@ export function RestaurantCounterPage () {
             <div className='grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4'>
               {visibleMenu.map(item => {
                 const inCart = cart.find(l => l.item.id === item.id)?.quantity ?? 0
+                const photo = menuImageUrl(item)
                 return (
                   <button
                     key={item.id}
                     type='button'
                     onClick={() => addItem(item)}
-                    className={`relative rounded-2xl border p-4 text-left transition-colors ${
+                    className={`relative flex flex-col justify-start overflow-hidden rounded-2xl border text-left transition-colors ${anyPhoto ? '' : 'p-4'} ${
                       inCart
                         ? 'border-emerald-500 bg-emerald-50'
                         : 'border-gray-200 bg-white hover:border-emerald-300 hover:bg-emerald-50/50'
                     }`}
                   >
                     {inCart > 0 && (
-                      <span className='absolute right-2 top-2 flex h-6 min-w-6 items-center justify-center rounded-full bg-emerald-600 px-1.5 text-xs font-bold text-white'>
+                      <span className='absolute right-2 top-2 z-10 flex h-6 min-w-6 items-center justify-center rounded-full bg-emerald-600 px-1.5 text-xs font-bold text-white shadow'>
                         {inCart}
                       </span>
                     )}
-                    <p className='pr-6 font-semibold text-gray-900'>{item.name}</p>
-                    <p className='mt-0.5 text-xs text-gray-500'>{item.category}</p>
-                    <p className='mt-2 text-sm font-bold text-emerald-700'>{money(item.price)}</p>
+                    {photo ? (
+                      <img
+                        src={photo}
+                        alt=''
+                        loading='lazy'
+                        className='aspect-[4/3] w-full bg-gray-100 object-cover'
+                      />
+                    ) : anyPhoto ? (
+                      <div className='flex aspect-[4/3] w-full items-center justify-center bg-emerald-50 text-emerald-200'>
+                        <UtensilsCrossed size={32} />
+                      </div>
+                    ) : null}
+                    <div className={anyPhoto ? 'p-3' : ''}>
+                      <p className='pr-6 font-semibold text-gray-900'>{item.name}</p>
+                      <p className='mt-0.5 text-xs text-gray-500'>{item.category}</p>
+                      <p className='mt-2 text-sm font-bold text-emerald-700'>{money(item.price)}</p>
+                    </div>
                   </button>
                 )
               })}

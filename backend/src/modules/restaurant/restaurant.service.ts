@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client'
 import { db } from '@/config/db'
-import { ConflictError, NotFoundError } from '@/common/errors/AppError'
+import { BadRequestError, ConflictError, NotFoundError } from '@/common/errors/AppError'
+import { checkMenuItemLimit } from '@/modules/subscriptions/subscriptions.service'
 
 // ---------------------------------------------------------------------------
 // MENU ITEMS
@@ -18,6 +19,7 @@ export async function createMenuItem (
   tenantId: string,
   input: CreateMenuItemInput
 ) {
+  await checkMenuItemLimit(tenantId)
   return db.menuItem.create({ data: { ...input, tenantId } })
 }
 
@@ -85,6 +87,10 @@ export async function updateMenuItem (
     throw new NotFoundError('Menu item not found')
   }
 
+  if (input.isActive === true && !existing.isActive) {
+    await checkMenuItemLimit(tenantId)
+  }
+
   return db.menuItem.update({ where: { id: menuItemId }, data: input })
 }
 
@@ -103,6 +109,95 @@ export async function deactivateMenuItem (tenantId: string, menuItemId: string) 
     where: { id: menuItemId },
     data: { isActive: false, isAvailable: false }
   })
+}
+
+// ---------------------------------------------------------------------------
+// MENU ITEM PHOTOS
+// ---------------------------------------------------------------------------
+
+const MAX_IMAGE_BYTES = 700 * 1024
+
+// Checks the first bytes of the file too, not just the label in the data
+// URL, so something that is not really a picture is refused.
+function detectImageType (bytes: Buffer): string | null {
+  if (bytes.length > 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
+    return 'image/jpeg'
+  }
+  if (
+    bytes.length > 8 &&
+    bytes.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
+  ) {
+    return 'image/png'
+  }
+  if (
+    bytes.length > 12 &&
+    bytes.subarray(0, 4).toString('ascii') === 'RIFF' &&
+    bytes.subarray(8, 12).toString('ascii') === 'WEBP'
+  ) {
+    return 'image/webp'
+  }
+  return null
+}
+
+export function parseImageDataUrl (dataUrl: string): { bytes: Buffer, mime: string } {
+  const match = /^data:image\/(?:jpeg|png|webp);base64,([A-Za-z0-9+/]+={0,2})$/.exec(dataUrl)
+  if (!match) {
+    throw new BadRequestError('Photo must be a JPEG, PNG or WebP image')
+  }
+  const bytes = Buffer.from(match[1], 'base64')
+  if (bytes.length === 0) {
+    throw new BadRequestError('Photo is empty')
+  }
+  if (bytes.length > MAX_IMAGE_BYTES) {
+    throw new BadRequestError('Photo is too large — please choose a smaller one')
+  }
+  const mime = detectImageType(bytes)
+  if (!mime) {
+    throw new BadRequestError('That file is not a valid photo')
+  }
+  return { bytes, mime }
+}
+
+async function findOwnMenuItem (tenantId: string, menuItemId: string) {
+  const existing = await db.menuItem.findFirst({
+    where: { id: menuItemId, tenantId },
+    select: { id: true }
+  })
+  if (!existing) {
+    throw new NotFoundError('Menu item not found')
+  }
+}
+
+export async function setMenuItemImage (
+  tenantId: string,
+  menuItemId: string,
+  dataUrl: string
+) {
+  const { bytes, mime } = parseImageDataUrl(dataUrl)
+  await findOwnMenuItem(tenantId, menuItemId)
+  return db.menuItem.update({
+    where: { id: menuItemId },
+    data: { image: new Uint8Array(bytes), imageMime: mime, imageUpdatedAt: new Date() }
+  })
+}
+
+export async function removeMenuItemImage (tenantId: string, menuItemId: string) {
+  await findOwnMenuItem(tenantId, menuItemId)
+  return db.menuItem.update({
+    where: { id: menuItemId },
+    data: { image: null, imageMime: null, imageUpdatedAt: null }
+  })
+}
+
+export async function getMenuItemImage (tenantId: string, menuItemId: string) {
+  const row = await db.menuItem.findFirst({
+    where: { id: menuItemId, tenantId },
+    select: { image: true, imageMime: true }
+  })
+  if (!row || !row.image || !row.imageMime) {
+    throw new NotFoundError('Photo not found')
+  }
+  return { bytes: Buffer.from(row.image), mime: row.imageMime }
 }
 
 // ---------------------------------------------------------------------------

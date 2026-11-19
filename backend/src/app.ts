@@ -23,7 +23,9 @@ export function createApp() {
   const app = express();
 
   app.use(cors({ origin: buildCorsOriginValidator(), credentials: true }));
-  app.use(express.json());
+  // 1 MB leaves room for a resized menu photo (sent as base64) — the
+  // default 100 KB limit would reject it.
+  app.use(express.json({ limit: "1mb" }));
   app.use(cookieParser());
 
   app.get("/health", (_req, res) => res.json({ status: "ok" }));

@@ -9,7 +9,7 @@ const LOCAL_HOST_RE = /(^|\.)(localhost|127\.0\.0\.1|lvh\.me)$/;
 const LOCAL_URL_RE = /\/\/(([^/]*\.)?(localhost|127\.0\.0\.1|lvh\.me))(:|\/|$)/;
 const onLocalMachine = LOCAL_HOST_RE.test(window.location.hostname);
 const ENV_API_URL = import.meta.env.VITE_API_URL;
-const API_BASE_URL =
+export const API_BASE_URL =
   ENV_API_URL && (onLocalMachine || !LOCAL_URL_RE.test(ENV_API_URL))
     ? ENV_API_URL
     : onLocalMachine

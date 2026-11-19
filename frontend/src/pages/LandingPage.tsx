@@ -5,7 +5,6 @@ import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
 import { LanguageSwitcher } from "../components/LanguageSwitcher";
 import { BusinessSlider } from "../components/landing/BusinessSlider";
-import { MOCK_PLAN_PRICES } from "../lib/platformMockData";
 
 
 // Home page. One idea runs through it: the exercise book (daftari) that
@@ -21,10 +20,12 @@ const NAV_LINKS = [
   { key: "landing.nav.contact", en: "Contact", href: "#contact" },
 ];
 
+// Keep in step with backend/src/modules/subscriptions/plans.ts.
+// null = unlimited. Restaurant prices are still being decided (pilot).
 const PLANS = [
-  { plan: "FREE", productLimit: 20, seatLimit: 2, recommended: false },
-  { plan: "STARTER", productLimit: 200, seatLimit: 5, recommended: true },
-  { plan: "PRO", productLimit: 100000, seatLimit: 50, recommended: false },
+  { plan: "FREE", price: 0, productLimit: 50, seatLimit: 2, recommended: false },
+  { plan: "STARTER", price: 50_000, productLimit: 500, seatLimit: 5, recommended: true },
+  { plan: "PRO", price: 100_000, productLimit: null, seatLimit: 30, recommended: false },
 ] as const;
 
 const tsh = (n: number) => `Tsh ${n.toLocaleString()}`;
@@ -168,8 +169,9 @@ export function LandingPage() {
             {t("landing.pricing.title", "Simple pricing that grows with you")}
           </h2>
           <p className="mt-3 text-lg text-[#4A5652]">{t("landing.pricing.subtitle", "Start free. Upgrade when your business needs more room.")}</p>
+          <p className="mt-2 text-sm text-[#6B7772]">{t("landing.pricing.restaurantNote", "Restaurants: free while we run our pilot.")}</p>
           <div className="mt-10 grid gap-5 md:grid-cols-3">
-            {PLANS.map(({ plan, productLimit, seatLimit, recommended }) => (
+            {PLANS.map(({ plan, price, productLimit, seatLimit, recommended }) => (
               <div
                 key={plan}
                 className={`relative rounded-2xl bg-white p-6 ${recommended ? "ring-2 ring-[#0F6B47]" : "border border-[#DDE5E0]"}`}
@@ -181,13 +183,15 @@ export function LandingPage() {
                 )}
                 <h3 className="home-display text-lg font-bold">{plan.charAt(0) + plan.slice(1).toLowerCase()}</h3>
                 <p className="mt-2">
-                  <span className="home-display text-3xl font-extrabold">{tsh(MOCK_PLAN_PRICES[plan])}</span>
-                  <span className="text-sm text-[#6B7772]"> /{t("landing.pricing.month", "month")}</span>
+                  <span className="home-display text-3xl font-extrabold">{tsh(price)}</span>
+                  {price > 0 && <span className="text-sm text-[#6B7772]"> /{t("landing.pricing.month", "month")}</span>}
                 </p>
                 <ul className="mt-5 space-y-2.5 text-[15px] text-[#3B4642]">
                   {[
                     t("landing.pricing.staffAccounts", "Up to {n} staff accounts").replace("{n}", String(seatLimit)),
-                    t("landing.pricing.products", "Up to {n} products").replace("{n}", productLimit.toLocaleString()),
+                    productLimit === null
+                      ? t("landing.pricing.productsUnlimited", "Unlimited products")
+                      : t("landing.pricing.products", "Up to {n} products").replace("{n}", productLimit.toLocaleString()),
                     t("landing.pricing.feature.core", "Sales, stock & customer management"),
                     t("landing.pricing.feature.reports", "Expense tracking & reports"),
                   ].map((f) => (

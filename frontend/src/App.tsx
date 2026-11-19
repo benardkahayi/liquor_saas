@@ -30,6 +30,7 @@ import { RestaurantCounterPage } from "./pages/RestaurantCounterPage";
 import { RestaurantDebtsPage } from "./pages/RestaurantDebtsPage";
 import { RestaurantDaybookPage } from "./pages/RestaurantDaybookPage";
 import { TenantSubdomainApp } from "./TenantSubdomainApp";
+import { PlanPage } from "./pages/PlanPage";
 import { getCurrentSubdomain } from "./lib/tenantHost";
 
 function withLayout(children: React.ReactNode) {
@@ -87,6 +88,7 @@ function AppRoutes() {
         <Route path="/expenses" element={withLayout(<ExpensesPage />)} />
         <Route path="/reports" element={withLayout(<ReportsPage />)} />
         <Route path="/settings" element={withLayout(<SettingsPage />)} />
+        <Route path="/plan" element={withLayout(<PlanPage />)} />
 
         <Route path="/super-admin" element={<Navigate to="/super-admin/dashboard" replace />} />
         <Route

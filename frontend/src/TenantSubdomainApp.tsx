@@ -25,6 +25,7 @@ import { RestaurantTablesPage } from "./pages/RestaurantTablesPage";
 import { RestaurantCounterPage } from "./pages/RestaurantCounterPage";
 import { RestaurantDebtsPage } from "./pages/RestaurantDebtsPage";
 import { RestaurantDaybookPage } from "./pages/RestaurantDaybookPage";
+import { PlanPage } from "./pages/PlanPage";
 
 type SlugCheck = "loading" | "not-found" | "suspended" | "ok";
 
@@ -129,6 +130,7 @@ export function TenantSubdomainApp({ slug }: { slug: string }) {
       <Route path="/expenses" element={withTenantLayout(<ExpensesPage />)} />
       <Route path="/reports" element={withTenantLayout(<ReportsPage />)} />
       <Route path="/settings" element={withTenantLayout(<SettingsPage />)} />
+      <Route path="/plan" element={withTenantLayout(<PlanPage />)} />
       <Route path="*" element={withTenantLayout(<HomeDashboard />)} />
     </Routes>
   );

@@ -25,6 +25,14 @@ export const listMenuItemsQuerySchema = z.object({
   includeInactive: z.coerce.boolean().default(false)
 })
 
+// A photo arrives as a data URL ("data:image/jpeg;base64,...") made by the
+// browser after resizing it. ~1 MB of base64 is ~750 KB of image.
+export const menuItemImageSchema = z.object({
+  dataUrl: z
+    .string()
+    .max(1_000_000, 'Photo is too large — please choose a smaller one')
+})
+
 // ---------------------------------------------------------------------------
 // TABLES
 // ---------------------------------------------------------------------------

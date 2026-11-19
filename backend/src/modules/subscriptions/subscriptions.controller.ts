@@ -11,6 +11,15 @@ export async function getSubscriptionHandler(req: Request, res: Response, next: 
   }
 }
 
+export async function getUsageHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const usage = await subscriptionsService.getUsage(req.user!.tenantId!);
+    res.status(200).json({ data: usage });
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function upgradePlanHandler(req: Request, res: Response, next: NextFunction) {
   try {
     const { plan } = upgradePlanSchema.parse(req.body);

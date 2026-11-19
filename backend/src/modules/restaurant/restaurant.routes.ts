@@ -8,6 +8,9 @@ import {
   listMenuCategoriesHandler,
   updateMenuItemHandler,
   deactivateMenuItemHandler,
+  setMenuItemImageHandler,
+  removeMenuItemImageHandler,
+  getMenuItemImageHandler,
   createTableHandler,
   listTablesHandler,
   updateTableHandler,
@@ -60,6 +63,23 @@ router.delete(
   '/menu/:id',
   requirePermission('restaurant.menu.manage'),
   deactivateMenuItemHandler
+)
+
+// Menu photos
+router.get(
+  '/menu/:id/image',
+  requirePermission('restaurant.orders.view'),
+  getMenuItemImageHandler
+)
+router.put(
+  '/menu/:id/image',
+  requirePermission('restaurant.menu.manage'),
+  setMenuItemImageHandler
+)
+router.delete(
+  '/menu/:id/image',
+  requirePermission('restaurant.menu.manage'),
+  removeMenuItemImageHandler
 )
 
 // Tables — viewing table status is part of taking orders; managing the

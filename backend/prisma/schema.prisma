@@ -287,6 +287,12 @@ model MenuItem {
   price       Decimal  @db.Decimal(10, 2)
   isAvailable Boolean  @default(true)
   isActive    Boolean  @default(true)
+  // Photo of the dish, resized in the browser before upload (~50–150 KB).
+  // Never loaded with normal queries (see the global omit in config/db.ts);
+  // served on its own by GET /restaurant/menu/:id/image.
+  image          Bytes?
+  imageMime      String?
+  imageUpdatedAt DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

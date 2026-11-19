@@ -6,6 +6,7 @@ import {
   getTenantHandler,
   updateTenantStatusHandler,
   getPlatformStatsHandler,
+  setTenantPlanHandler,
 } from "./superadmin.controller";
 
 const router = Router();
@@ -16,5 +17,6 @@ router.get("/stats", getPlatformStatsHandler);
 router.get("/tenants", listTenantsHandler);
 router.get("/tenants/:id", getTenantHandler);
 router.put("/tenants/:id/status", updateTenantStatusHandler);
+router.put("/tenants/:id/plan", setTenantPlanHandler);
 
 export default router;
