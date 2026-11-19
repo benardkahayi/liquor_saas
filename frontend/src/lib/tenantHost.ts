@@ -7,7 +7,11 @@ const APP_DOMAIN = import.meta.env.VITE_APP_DOMAIN || "localhost";
 // free *.vercel.app URL, which can't have its own subdomains). The backend
 // still knows the business from the logged-in user's token, so nothing else
 // changes — only the per-business address is skipped.
-export const SUBDOMAINS_ENABLED = import.meta.env.VITE_USE_SUBDOMAINS !== "false";
+// A *.vercel.app address can never have per-business subdomains, so it is
+// always single-address there.
+export const SUBDOMAINS_ENABLED =
+  import.meta.env.VITE_USE_SUBDOMAINS !== "false" &&
+  !window.location.hostname.endsWith(".vercel.app");
 
 export function getCurrentSubdomain(): string | null {
   if (!SUBDOMAINS_ENABLED) return null;

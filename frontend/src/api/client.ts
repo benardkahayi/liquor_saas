@@ -1,7 +1,20 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from "axios";
 import { getCurrentSubdomain } from "../lib/tenantHost";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:4000/api/v1";
+// On your own computer (localhost / lvh.me) the API runs on port 4000. Anywhere
+// else (Vercel) the site proxies /api to the backend (see vercel.json), so a
+// leftover localhost value in VITE_API_URL is ignored there instead of
+// breaking every request.
+const LOCAL_HOST_RE = /(^|\.)(localhost|127\.0\.0\.1|lvh\.me)$/;
+const LOCAL_URL_RE = /\/\/(([^/]*\.)?(localhost|127\.0\.0\.1|lvh\.me))(:|\/|$)/;
+const onLocalMachine = LOCAL_HOST_RE.test(window.location.hostname);
+const ENV_API_URL = import.meta.env.VITE_API_URL;
+const API_BASE_URL =
+  ENV_API_URL && (onLocalMachine || !LOCAL_URL_RE.test(ENV_API_URL))
+    ? ENV_API_URL
+    : onLocalMachine
+      ? "http://localhost:4000/api/v1"
+      : "/api/v1";
 
 // Auth now travels as httpOnly cookies set by the backend (see
 // backend/src/common/utils/authCookies.ts) rather than in-memory JS
