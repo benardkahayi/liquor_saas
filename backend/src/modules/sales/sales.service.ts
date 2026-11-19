@@ -24,8 +24,23 @@ export async function createSale(
   cashierId: string,
   input: CreateSaleInput
 ) {
+  // Merge repeated lines for the same product. Otherwise [{p1,5},{p1,5}] with
+  // 6 in stock passes the per-line check twice and drives stock to -4.
+  const merged = new Map<string, number>();
+  for (const item of input.items) {
+    merged.set(item.productId, (merged.get(item.productId) ?? 0) + item.quantity);
+  }
+  const items: SaleItemInput[] = [...merged].map(([productId, quantity]) => ({ productId, quantity }));
+
   return db.$transaction(async (tx: Prisma.TransactionClient) => {
-    const productIds = input.items.map((i) => i.productId);
+    if (input.customerId) {
+      const customer = await tx.customer.findFirst({ where: { id: input.customerId, tenantId } });
+      if (!customer) {
+        throw new NotFoundError("Customer not found");
+      }
+    }
+
+    const productIds = items.map((i) => i.productId);
     const products = await tx.product.findMany({
       where: { id: { in: productIds }, tenantId },
     });
@@ -40,7 +55,7 @@ export async function createSale(
       lineTotal: Prisma.Decimal;
     }[] = [];
 
-    for (const item of input.items) {
+    for (const item of items) {
       const product = productMap.get(item.productId);
 
       if (!product) {
@@ -98,10 +113,17 @@ export async function createSale(
     });
 
     for (const item of lineItems) {
-      await tx.product.update({
-        where: { id: item.productId },
+      // Atomic check-and-decrement: only succeeds if enough stock is left at
+      // this exact moment. If another cashier sold the last units a split
+      // second ago, count is 0 and the whole sale rolls back.
+      const updated = await tx.product.updateMany({
+        where: { id: item.productId, tenantId, stockQuantity: { gte: item.quantity } },
         data: { stockQuantity: { decrement: item.quantity } },
       });
+      if (updated.count === 0) {
+        const name = productMap.get(item.productId)?.name ?? item.productId;
+        throw new BadRequestError(`"${name}" just ran out of stock — please check the quantity and try again`);
+      }
 
       await tx.inventoryTransaction.create({
         data: {

@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { api } from "../api/client";
+import { useLanguage } from "../context/LanguageContext";
 import { Modal } from "../components/Modal";
 import { Pagination } from "../components/Pagination";
 import { ErrorBanner, extractErrorMessage } from "../components/ErrorBanner";
@@ -22,6 +23,7 @@ interface PaginationInfo {
 const EMPTY_FORM = { fullName: "", email: "", phone: "", address: "" };
 
 export function CustomersPage() {
+  const { t } = useLanguage();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [pagination, setPagination] = useState<PaginationInfo | null>(null);
   const [page, setPage] = useState(1);
@@ -40,31 +42,28 @@ export function CustomersPage() {
         setPagination(res.data.pagination);
         setError(null);
       })
-      .catch((err) => setError(extractErrorMessage(err, "Failed to load customers")))
+      .catch((err) => setError(extractErrorMessage(err, t("customers.error.load", "Failed to load customers"))))
       .finally(() => setIsLoading(false));
   }
 
   useEffect(load, [page, search]);
 
   async function handleDelete(customer: Customer) {
-    if (!confirm(`Delete "${customer.fullName}"?`)) return;
+    if (!confirm(`${t("common.deleteConfirm", "Delete")} "${customer.fullName}"?`)) return;
     try {
       await api.delete(`/customers/${customer.id}`);
       load();
     } catch (err) {
-      setError(extractErrorMessage(err, "Failed to delete customer"));
+      setError(extractErrorMessage(err, t("customers.error.delete", "Failed to delete customer")));
     }
   }
 
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Customers</h1>
-        <button
-          onClick={() => setIsCreating(true)}
-          className="btn-primary px-4 py-2 text-sm"
-        >
-          Add Customer
+        <h1 className="text-2xl font-bold text-gray-900">{t("customers.title", "Customers")}</h1>
+        <button onClick={() => setIsCreating(true)} className="btn-primary px-4 py-2 text-sm">
+          {t("customers.add", "Add Customer")}
         </button>
       </div>
 
@@ -72,7 +71,7 @@ export function CustomersPage() {
 
       <input
         type="text"
-        placeholder="Search customers..."
+        placeholder={t("customers.search", "Search customers...")}
         value={search}
         onChange={(e) => {
           setPage(1);
@@ -85,9 +84,9 @@ export function CustomersPage() {
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-gray-500 text-left uppercase text-xs tracking-wide">
             <tr>
-              <th className="px-4 py-2 font-medium">Name</th>
-              <th className="px-4 py-2 font-medium">Email</th>
-              <th className="px-4 py-2 font-medium">Phone</th>
+              <th className="px-4 py-2 font-medium">{t("customers.col.name", "Name")}</th>
+              <th className="px-4 py-2 font-medium">{t("customers.col.email", "Email")}</th>
+              <th className="px-4 py-2 font-medium">{t("customers.col.phone", "Phone")}</th>
               <th className="px-4 py-2 font-medium"></th>
             </tr>
           </thead>
@@ -95,14 +94,14 @@ export function CustomersPage() {
             {isLoading && (
               <tr>
                 <td colSpan={4} className="px-4 py-6 text-center text-gray-400">
-                  Loading...
+                  {t("common.loading", "Loading...")}
                 </td>
               </tr>
             )}
             {!isLoading && customers.length === 0 && (
               <tr>
                 <td colSpan={4} className="px-4 py-6 text-center text-gray-400">
-                  No customers found.
+                  {t("customers.empty", "No customers found.")}
                 </td>
               </tr>
             )}
@@ -113,10 +112,10 @@ export function CustomersPage() {
                 <td className="px-4 py-2 text-gray-600">{customer.phone ?? "—"}</td>
                 <td className="px-4 py-2 text-right space-x-3 whitespace-nowrap">
                   <button onClick={() => setEditing(customer)} className="text-blue-600 hover:underline">
-                    Edit
+                    {t("common.edit", "Edit")}
                   </button>
                   <button onClick={() => handleDelete(customer)} className="text-red-600 hover:underline">
-                    Delete
+                    {t("common.delete", "Delete")}
                   </button>
                 </td>
               </tr>
@@ -154,6 +153,7 @@ function CustomerFormModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { t } = useLanguage();
   const [form, setForm] = useState(
     customer
       ? {
@@ -187,19 +187,22 @@ function CustomerFormModal({
       }
       onSaved();
     } catch (err) {
-      setError(extractErrorMessage(err, "Failed to save customer"));
+      setError(extractErrorMessage(err, t("customers.error.save", "Failed to save customer")));
     } finally {
       setIsSubmitting(false);
     }
   }
 
   return (
-    <Modal title={customer ? "Edit Customer" : "Add Customer"} onClose={onClose}>
+    <Modal
+      title={customer ? t("customers.editTitle", "Edit Customer") : t("customers.addTitle", "Add Customer")}
+      onClose={onClose}
+    >
       <form onSubmit={handleSubmit} className="space-y-4">
         <ErrorBanner message={error} />
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t("customers.field.fullName", "Full Name")}</label>
           <input
             required
             value={form.fullName}
@@ -209,7 +212,7 @@ function CustomerFormModal({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t("customers.col.email", "Email")}</label>
           <input
             type="email"
             value={form.email}
@@ -219,7 +222,7 @@ function CustomerFormModal({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t("customers.col.phone", "Phone")}</label>
           <input
             value={form.phone}
             onChange={(e) => setForm({ ...form, phone: e.target.value })}
@@ -229,7 +232,7 @@ function CustomerFormModal({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t("customers.field.address", "Address")}</label>
           <input
             value={form.address}
             onChange={(e) => setForm({ ...form, address: e.target.value })}
@@ -239,14 +242,10 @@ function CustomerFormModal({
 
         <div className="flex justify-end gap-2 pt-2">
           <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900">
-            Cancel
+            {t("common.cancel", "Cancel")}
           </button>
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="btn-primary px-4 py-2 text-sm"
-          >
-            {isSubmitting ? "Saving..." : "Save"}
+          <button type="submit" disabled={isSubmitting} className="btn-primary px-4 py-2 text-sm">
+            {isSubmitting ? t("common.saving", "Saving...") : t("common.save", "Save")}
           </button>
         </div>
       </form>

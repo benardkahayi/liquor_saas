@@ -28,7 +28,8 @@ export async function listExpensesHandler(req: Request, res: Response, next: Nex
 
 export async function getExpenseHandler(req: Request, res: Response, next: NextFunction) {
   try {
-    const expense = await expensesService.getExpenseById(req.user!.tenantId!, req.params.id);
+    const expenseId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const expense = await expensesService.getExpenseById(req.user!.tenantId!, expenseId);
     res.status(200).json({ data: expense });
   } catch (err) {
     next(err);
@@ -38,9 +39,10 @@ export async function getExpenseHandler(req: Request, res: Response, next: NextF
 export async function updateExpenseHandler(req: Request, res: Response, next: NextFunction) {
   try {
     const input = updateExpenseSchema.parse(req.body);
+    const expenseId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
     const expense = await expensesService.updateExpense(
       req.user!.tenantId!,
-      req.params.id,
+      expenseId,
       input
     );
     res.status(200).json({ data: expense });
@@ -51,7 +53,8 @@ export async function updateExpenseHandler(req: Request, res: Response, next: Ne
 
 export async function deleteExpenseHandler(req: Request, res: Response, next: NextFunction) {
   try {
-    await expensesService.deleteExpense(req.user!.tenantId!, req.params.id);
+    const expenseId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    await expensesService.deleteExpense(req.user!.tenantId!, expenseId);
     res.status(204).send();
   } catch (err) {
     next(err);

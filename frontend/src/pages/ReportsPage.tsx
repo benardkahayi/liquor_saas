@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import { money } from "../lib/money";
+import { useLanguage } from "../context/LanguageContext";
 import { ErrorBanner, extractErrorMessage } from "../components/ErrorBanner";
 
 interface LowStockItem {
@@ -29,6 +30,7 @@ interface ExpenseByCategory {
 }
 
 export function ReportsPage() {
+  const { t } = useLanguage();
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
@@ -59,7 +61,7 @@ export function ReportsPage() {
         (r) => r.status === "rejected"
       );
       if (firstError && firstError.status === "rejected") {
-        setError(extractErrorMessage(firstError.reason, "Some reports failed to load"));
+        setError(extractErrorMessage(firstError.reason, t("reports.error.load", "Some reports failed to load")));
       } else {
         setError(null);
       }
@@ -70,65 +72,67 @@ export function ReportsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Reports</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mb-6">{t("reports.title", "Reports")}</h1>
 
       <ErrorBanner message={error} />
 
       <div className="flex gap-4 mb-6">
         <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">Start Date</label>
+          <label className="block text-xs font-medium text-gray-500 mb-1">{t("reports.startDate", "Start Date")}</label>
           <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="input" />
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">End Date</label>
+          <label className="block text-xs font-medium text-gray-500 mb-1">{t("reports.endDate", "End Date")}</label>
           <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="input" />
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-6">
         <section className="card p-4">
-          <h2 className="font-semibold text-gray-900 mb-3">Sales</h2>
+          <h2 className="font-semibold text-gray-900 mb-3">{t("reports.sales", "Sales")}</h2>
           {salesReport ? (
             <div className="space-y-1 text-sm">
-              <Row label="Total Revenue" value={money(salesReport.totalRevenue)} />
-              <Row label="Total Discount" value={money(salesReport.totalDiscount)} />
-              <Row label="Number of Sales" value={String(salesReport.saleCount)} />
+              <Row label={t("reports.totalRevenue", "Total Revenue")} value={money(salesReport.totalRevenue)} />
+              <Row label={t("reports.totalDiscount", "Total Discount")} value={money(salesReport.totalDiscount)} />
+              <Row label={t("reports.numberOfSales", "Number of Sales")} value={String(salesReport.saleCount)} />
             </div>
           ) : (
-            <p className="text-gray-400 text-sm">No data.</p>
+            <p className="text-gray-400 text-sm">{t("reports.noData", "No data.")}</p>
           )}
         </section>
 
         <section className="card p-4">
-          <h2 className="font-semibold text-gray-900 mb-3">Inventory Valuation</h2>
+          <h2 className="font-semibold text-gray-900 mb-3">{t("reports.inventoryValuation", "Inventory Valuation")}</h2>
           {valuation ? (
             <div className="space-y-1 text-sm">
-              <Row label="Cost Value" value={money(valuation.costValue)} />
-              <Row label="Retail Value" value={money(valuation.retailValue)} />
-              <Row label="Potential Profit" value={money(valuation.potentialProfit)} />
+              <Row label={t("reports.costValue", "Cost Value")} value={money(valuation.costValue)} />
+              <Row label={t("reports.retailValue", "Retail Value")} value={money(valuation.retailValue)} />
+              <Row label={t("reports.potentialProfit", "Potential Profit")} value={money(valuation.potentialProfit)} />
             </div>
           ) : (
-            <p className="text-gray-400 text-sm">No data.</p>
+            <p className="text-gray-400 text-sm">{t("reports.noData", "No data.")}</p>
           )}
         </section>
 
         <section className="card p-4">
-          <h2 className="font-semibold text-gray-900 mb-3">Low Stock</h2>
-          {lowStock.length === 0 && <p className="text-gray-400 text-sm">No low-stock items.</p>}
+          <h2 className="font-semibold text-gray-900 mb-3">{t("dashboard.lowStock", "Low Stock")}</h2>
+          {lowStock.length === 0 && <p className="text-gray-400 text-sm">{t("reports.noLowStock", "No low-stock items.")}</p>}
           <div className="space-y-1 text-sm">
             {lowStock.map((item) => (
               <Row
                 key={item.id}
                 label={item.name}
-                value={`${item.stockQuantity} / min ${item.minStockLevel}`}
+                value={`${item.stockQuantity} / ${t("products.min", "min")} ${item.minStockLevel}`}
               />
             ))}
           </div>
         </section>
 
         <section className="card p-4">
-          <h2 className="font-semibold text-gray-900 mb-3">Expenses by Category</h2>
-          {expensesByCategory.length === 0 && <p className="text-gray-400 text-sm">No expenses in range.</p>}
+          <h2 className="font-semibold text-gray-900 mb-3">{t("reports.expensesByCategory", "Expenses by Category")}</h2>
+          {expensesByCategory.length === 0 && (
+            <p className="text-gray-400 text-sm">{t("reports.noExpenses", "No expenses in range.")}</p>
+          )}
           <div className="space-y-1 text-sm">
             {expensesByCategory.map((row) => (
               <Row key={row.category} label={row.category} value={money(row._sum.amount ?? 0)} />

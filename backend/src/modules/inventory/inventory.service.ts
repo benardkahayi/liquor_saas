@@ -18,17 +18,29 @@ export async function createAdjustment(tenantId: string, input: CreateAdjustment
       throw new NotFoundError("Product not found");
     }
 
-    const newQuantity = product.stockQuantity + input.quantity;
+    // Relative, atomic update. The old code wrote an absolute number
+    // (current + adjustment) computed from a stale read, so a sale that
+    // happened in between was silently wiped out. For removals, the WHERE
+    // guard makes "would go negative" a check at write time, not read time.
+    const updated = await tx.product.updateMany({
+      where: {
+        id: product.id,
+        tenantId,
+        ...(input.quantity < 0 && { stockQuantity: { gte: -input.quantity } }),
+      },
+      data: { stockQuantity: { increment: input.quantity } },
+    });
 
-    if (newQuantity < 0) {
+    if (updated.count === 0) {
+      const current = await tx.product.findUniqueOrThrow({ where: { id: product.id } });
       throw new BadRequestError(
-        `This adjustment would result in negative stock (current: ${product.stockQuantity}, adjustment: ${input.quantity})`
+        `This adjustment would result in negative stock (current: ${current.stockQuantity}, adjustment: ${input.quantity})`
       );
     }
 
-    await tx.product.update({
+    const { stockQuantity: newQuantity } = await tx.product.findUniqueOrThrow({
       where: { id: product.id },
-      data: { stockQuantity: newQuantity },
+      select: { stockQuantity: true },
     });
 
     const transaction = await tx.inventoryTransaction.create({

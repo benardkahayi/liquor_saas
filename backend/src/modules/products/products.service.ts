@@ -1,6 +1,7 @@
 import { db } from "@/config/db";
-import { NotFoundError, ConflictError } from "@/common/errors/AppError";
+import { NotFoundError, ConflictError, ForbiddenError } from "@/common/errors/AppError";
 import { Prisma } from "@prisma/client";
+import { checkProductLimit } from "@/modules/subscriptions/subscriptions.service";
 
 interface CreateProductInput {
   name: string;
@@ -17,6 +18,13 @@ interface CreateProductInput {
 }
 
 export async function createProduct(tenantId: string, input: CreateProductInput) {
+  const limitCheck = await checkProductLimit(tenantId);
+  if (limitCheck.limitReached) {
+    throw new ForbiddenError(
+      `You've reached your ${limitCheck.plan} plan's limit of ${limitCheck.limit} products. Upgrade your plan to add more.`
+    );
+  }
+
   if (input.sku) {
     const existing = await db.product.findFirst({
       where: { tenantId, sku: input.sku },
@@ -48,7 +56,7 @@ export async function listProducts(tenantId: string, input: ListProductsInput) {
     ...(input.categoryId && { categoryId: input.categoryId }),
   };
 
-   if (input.lowStockOnly) {
+  if (input.lowStockOnly) {
     const lowStockIds = await db.$queryRaw<{ id: string }[]>`
       SELECT id FROM products
       WHERE "tenantId" = ${tenantId} AND "stockQuantity" <= "minStockLevel"

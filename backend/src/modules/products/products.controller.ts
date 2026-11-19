@@ -28,7 +28,8 @@ export async function listProductsHandler(req: Request, res: Response, next: Nex
 
 export async function getProductHandler(req: Request, res: Response, next: NextFunction) {
   try {
-    const product = await productsService.getProductById(req.user!.tenantId!, req.params.id);
+    const productId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const product = await productsService.getProductById(req.user!.tenantId!, productId);
     res.status(200).json({ data: product });
   } catch (err) {
     next(err);
@@ -38,9 +39,10 @@ export async function getProductHandler(req: Request, res: Response, next: NextF
 export async function updateProductHandler(req: Request, res: Response, next: NextFunction) {
   try {
     const input = updateProductSchema.parse(req.body);
+    const productId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
     const product = await productsService.updateProduct(
       req.user!.tenantId!,
-      req.params.id,
+      productId,
       input
     );
     res.status(200).json({ data: product });
@@ -51,7 +53,8 @@ export async function updateProductHandler(req: Request, res: Response, next: Ne
 
 export async function deleteProductHandler(req: Request, res: Response, next: NextFunction) {
   try {
-    await productsService.deleteProduct(req.user!.tenantId!, req.params.id);
+    const productId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    await productsService.deleteProduct(req.user!.tenantId!, productId);
     res.status(204).send();
   } catch (err) {
     next(err);

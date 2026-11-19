@@ -1,13 +1,14 @@
 import { Router } from "express";
-import { registerHandler, loginHandler, refreshHandler } from "./auth.controller";
+import { registerHandler, loginHandler, refreshHandler, logoutHandler } from "./auth.controller";
 
 const router = Router();
 
-// These three routes are intentionally the ONLY unauthenticated endpoints
-// in the whole API. Everything else will sit behind the auth middleware
-// we build in the next step.
+// These are the unauthenticated endpoints in the API. Everything else sits
+// behind the auth middleware. Logout doesn't need auth either — it just
+// clears cookies, and calling it while already logged out is harmless.
 router.post("/register", registerHandler);
 router.post("/login", loginHandler);
 router.post("/refresh", refreshHandler);
+router.post("/logout", logoutHandler);
 
 export default router;

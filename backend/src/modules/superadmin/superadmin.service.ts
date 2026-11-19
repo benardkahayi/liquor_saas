@@ -21,7 +21,15 @@ export async function listTenants(input: ListTenantsInput) {
       skip: (input.page - 1) * input.pageSize,
       take: input.pageSize,
       orderBy: { createdAt: "desc" },
-      include: { subscription: true, _count: { select: { users: true } } },
+      include: {
+        subscription: true,
+        _count: { select: { users: true } },
+        users: {
+          where: { role: { name: "Owner" } },
+          select: { fullName: true, email: true },
+          take: 1,
+        },
+      },
     }),
     db.tenant.count({ where }),
   ]);

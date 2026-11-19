@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { api } from "../api/client";
+import { useLanguage } from "../context/LanguageContext";
 import { Modal } from "../components/Modal";
 import { Pagination } from "../components/Pagination";
 import { ErrorBanner, extractErrorMessage } from "../components/ErrorBanner";
@@ -28,6 +29,7 @@ interface PaginationInfo {
 }
 
 export function InventoryPage() {
+  const { t } = useLanguage();
   const [products, setProducts] = useState<Product[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -42,7 +44,7 @@ export function InventoryPage() {
         setProducts(res.data.items);
         setError(null);
       })
-      .catch((err) => setError(extractErrorMessage(err, "Failed to load inventory")))
+      .catch((err) => setError(extractErrorMessage(err, t("inventory.error.load", "Failed to load inventory"))))
       .finally(() => setIsLoading(false));
   }
 
@@ -51,26 +53,23 @@ export function InventoryPage() {
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Inventory</h1>
-        <button
-          onClick={() => setIsAdjusting(true)}
-          className="btn-primary px-4 py-2 text-sm"
-        >
-          New Adjustment
+        <h1 className="text-2xl font-bold text-gray-900">{t("inventory.title", "Inventory")}</h1>
+        <button onClick={() => setIsAdjusting(true)} className="btn-primary px-4 py-2 text-sm">
+          {t("inventory.newAdjustment", "New Adjustment")}
         </button>
       </div>
 
       <ErrorBanner message={error} />
 
-      <h2 className="text-sm font-semibold text-gray-500 uppercase mb-2">Low Stock</h2>
+      <h2 className="text-sm font-semibold text-gray-500 uppercase mb-2">{t("inventory.lowStock", "Low Stock")}</h2>
       <div className="card overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-gray-500 text-left uppercase text-xs tracking-wide">
             <tr>
-              <th className="px-4 py-2 font-medium">Product</th>
-              <th className="px-4 py-2 font-medium">SKU</th>
-              <th className="px-4 py-2 font-medium">Stock</th>
-              <th className="px-4 py-2 font-medium">Min Level</th>
+              <th className="px-4 py-2 font-medium">{t("inventory.col.product", "Product")}</th>
+              <th className="px-4 py-2 font-medium">{t("products.col.sku", "SKU")}</th>
+              <th className="px-4 py-2 font-medium">{t("products.col.stock", "Stock")}</th>
+              <th className="px-4 py-2 font-medium">{t("inventory.col.minLevel", "Min Level")}</th>
               <th className="px-4 py-2 font-medium"></th>
             </tr>
           </thead>
@@ -78,14 +77,14 @@ export function InventoryPage() {
             {isLoading && (
               <tr>
                 <td colSpan={5} className="px-4 py-6 text-center text-gray-400">
-                  Loading...
+                  {t("common.loading", "Loading...")}
                 </td>
               </tr>
             )}
             {!isLoading && products.length === 0 && (
               <tr>
                 <td colSpan={5} className="px-4 py-6 text-center text-gray-400">
-                  No low-stock products. Everything looks good.
+                  {t("inventory.empty", "No low-stock products. Everything looks good.")}
                 </td>
               </tr>
             )}
@@ -98,11 +97,8 @@ export function InventoryPage() {
                 </td>
                 <td className="px-4 py-2 text-gray-600">{product.minStockLevel}</td>
                 <td className="px-4 py-2 text-right">
-                  <button
-                    onClick={() => setHistoryProduct(product)}
-                    className="text-blue-600 hover:underline"
-                  >
-                    View History
+                  <button onClick={() => setHistoryProduct(product)} className="text-blue-600 hover:underline">
+                    {t("inventory.viewHistory", "View History")}
                   </button>
                 </td>
               </tr>
@@ -129,6 +125,7 @@ export function InventoryPage() {
 }
 
 function AdjustmentModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+  const { t } = useLanguage();
   const [products, setProducts] = useState<Product[]>([]);
   const [productId, setProductId] = useState("");
   const [quantity, setQuantity] = useState("");
@@ -156,24 +153,26 @@ function AdjustmentModal({ onClose, onSaved }: { onClose: () => void; onSaved: (
       });
       onSaved();
     } catch (err) {
-      setError(extractErrorMessage(err, "Failed to record adjustment"));
+      setError(extractErrorMessage(err, t("inventory.error.adjust", "Failed to record adjustment")));
     } finally {
       setIsSubmitting(false);
     }
   }
 
   return (
-    <Modal title="New Inventory Adjustment" onClose={onClose}>
+    <Modal title={t("inventory.newAdjustment", "New Inventory Adjustment")} onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <ErrorBanner message={error} />
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Product</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            {t("inventory.col.product", "Product")}
+          </label>
           <select required value={productId} onChange={(e) => setProductId(e.target.value)} className="input">
-            <option value="">Select a product</option>
+            <option value="">{t("inventory.selectProduct", "Select a product")}</option>
             {products.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.name} (current: {p.stockQuantity})
+                {p.name} ({t("inventory.current", "current")}: {p.stockQuantity})
               </option>
             ))}
           </select>
@@ -181,7 +180,8 @@ function AdjustmentModal({ onClose, onSaved }: { onClose: () => void; onSaved: (
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Quantity <span className="text-gray-400">(use a negative number to remove stock)</span>
+            {t("inventory.quantity", "Quantity")}{" "}
+            <span className="text-gray-400">({t("inventory.quantityHint", "use a negative number to remove stock")})</span>
           </label>
           <input
             required
@@ -193,27 +193,23 @@ function AdjustmentModal({ onClose, onSaved }: { onClose: () => void; onSaved: (
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Reason</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t("inventory.reason", "Reason")}</label>
           <input
             required
             minLength={3}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder="e.g. Damaged stock, stock count correction"
+            placeholder={t("inventory.reasonPlaceholder", "e.g. Damaged stock, stock count correction")}
             className="input"
           />
         </div>
 
         <div className="flex justify-end gap-2 pt-2">
           <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900">
-            Cancel
+            {t("common.cancel", "Cancel")}
           </button>
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="btn-primary px-4 py-2 text-sm"
-          >
-            {isSubmitting ? "Saving..." : "Save Adjustment"}
+          <button type="submit" disabled={isSubmitting} className="btn-primary px-4 py-2 text-sm">
+            {isSubmitting ? t("common.saving", "Saving...") : t("inventory.saveAdjustment", "Save Adjustment")}
           </button>
         </div>
       </form>
@@ -222,6 +218,7 @@ function AdjustmentModal({ onClose, onSaved }: { onClose: () => void; onSaved: (
 }
 
 function HistoryModal({ product, onClose }: { product: Product; onClose: () => void }) {
+  const { t } = useLanguage();
   const [items, setItems] = useState<InventoryTransaction[]>([]);
   const [pagination, setPagination] = useState<PaginationInfo | null>(null);
   const [page, setPage] = useState(1);
@@ -235,14 +232,16 @@ function HistoryModal({ product, onClose }: { product: Product; onClose: () => v
         setPagination(res.data.pagination);
         setError(null);
       })
-      .catch((err) => setError(extractErrorMessage(err, "Failed to load history")));
-  }, [page, product.id]);
+      .catch((err) => setError(extractErrorMessage(err, t("inventory.error.history", "Failed to load history"))));
+  }, [page, product.id, t]);
 
   return (
-    <Modal title={`History — ${product.name}`} onClose={onClose}>
+    <Modal title={`${t("inventory.history", "History")} — ${product.name}`} onClose={onClose}>
       <ErrorBanner message={error} />
       <div className="space-y-2">
-        {items.length === 0 && <p className="text-gray-400 text-sm">No transactions yet.</p>}
+        {items.length === 0 && (
+          <p className="text-gray-400 text-sm">{t("inventory.noTransactions", "No transactions yet.")}</p>
+        )}
         {items.map((tx) => (
           <div key={tx.id} className="flex justify-between text-sm border-b border-gray-100 pb-2">
             <div>

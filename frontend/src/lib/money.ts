@@ -4,5 +4,5 @@ export function toNum(value: number | string | null | undefined): number {
 }
 
 export function money(value: number | string | null | undefined): string {
-  return `$${toNum(value)}`;
+  return `Tsh ${toNum(value).toLocaleString()}`;
 }

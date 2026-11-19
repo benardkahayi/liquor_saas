@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { BUSINESS_TYPES } from "@/common/constants/businessTypes";
 
 export const updateTenantSettingsSchema = z.object({
   businessName: z.string().min(2).max(100).optional(),
@@ -12,4 +13,5 @@ export const updateTenantSettingsSchema = z.object({
     .optional(),
   receiptFooter: z.string().max(300).optional(),
   enabledModules: z.array(z.string()).optional(),
+  industry: z.enum(BUSINESS_TYPES).optional(),
 });

@@ -29,10 +29,8 @@ export async function listSuppliersHandler(req: Request, res: Response, next: Ne
 
 export async function getSupplierHandler(req: Request, res: Response, next: NextFunction) {
   try {
-    const supplier = await suppliersService.getSupplierById(
-      req.user!.tenantId!,
-      req.params.id
-    );
+    const supplierId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const supplier = await suppliersService.getSupplierById(req.user!.tenantId!, supplierId);
     res.status(200).json({ data: supplier });
   } catch (err) {
     next(err);
@@ -42,9 +40,10 @@ export async function getSupplierHandler(req: Request, res: Response, next: Next
 export async function updateSupplierHandler(req: Request, res: Response, next: NextFunction) {
   try {
     const input = updateSupplierSchema.parse(req.body);
+    const supplierId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
     const supplier = await suppliersService.updateSupplier(
       req.user!.tenantId!,
-      req.params.id,
+      supplierId,
       input
     );
     res.status(200).json({ data: supplier });
@@ -55,7 +54,8 @@ export async function updateSupplierHandler(req: Request, res: Response, next: N
 
 export async function deleteSupplierHandler(req: Request, res: Response, next: NextFunction) {
   try {
-    await suppliersService.deleteSupplier(req.user!.tenantId!, req.params.id);
+    const supplierId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    await suppliersService.deleteSupplier(req.user!.tenantId!, supplierId);
     res.status(204).send();
   } catch (err) {
     next(err);
@@ -65,11 +65,8 @@ export async function deleteSupplierHandler(req: Request, res: Response, next: N
 export async function recordPaymentHandler(req: Request, res: Response, next: NextFunction) {
   try {
     const { amount } = recordPaymentSchema.parse(req.body);
-    const supplier = await suppliersService.recordPayment(
-      req.user!.tenantId!,
-      req.params.id,
-      amount
-    );
+    const supplierId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const supplier = await suppliersService.recordPayment(req.user!.tenantId!, supplierId, amount);
     res.status(200).json({ data: supplier });
   } catch (err) {
     next(err);

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../api/client";
 import { money, toNum } from "../lib/money";
+import { useLanguage } from "../context/LanguageContext";
 import { Modal } from "../components/Modal";
 import { ErrorBanner, extractErrorMessage } from "../components/ErrorBanner";
 
@@ -36,6 +37,7 @@ interface CompletedSale {
 }
 
 export function SalesPage() {
+  const { t } = useLanguage();
   const [products, setProducts] = useState<Product[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [search, setSearch] = useState("");
@@ -124,7 +126,7 @@ export function SalesPage() {
       setCompletedSale(res.data.data);
       resetSale();
     } catch (err) {
-      setError(extractErrorMessage(err, "Failed to complete sale"));
+      setError(extractErrorMessage(err, t("sales.error.checkout", "Failed to complete sale")));
     } finally {
       setIsSubmitting(false);
     }
@@ -132,7 +134,7 @@ export function SalesPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">New Sale</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mb-6">{t("sales.title", "New Sale")}</h1>
 
       <ErrorBanner message={error} />
 
@@ -140,7 +142,7 @@ export function SalesPage() {
         <div className="col-span-2">
           <input
             type="text"
-            placeholder="Search products to add..."
+            placeholder={t("sales.searchProducts", "Search products to add...")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="input mb-4"
@@ -155,27 +157,29 @@ export function SalesPage() {
               >
                 <p className="text-sm font-medium text-gray-900">{product.name}</p>
                 <p className="text-xs text-gray-500">
-                  {money(product.sellingPrice)} · stock {product.stockQuantity}
+                  {money(product.sellingPrice)} · {t("products.col.stock", "stock")} {product.stockQuantity}
                 </p>
               </button>
             ))}
             {products.length === 0 && (
-              <p className="text-gray-400 text-sm col-span-2">No products match your search.</p>
+              <p className="text-gray-400 text-sm col-span-2">
+                {t("sales.noMatch", "No products match your search.")}
+              </p>
             )}
           </div>
         </div>
 
         <div className="card p-4 h-fit">
-          <h2 className="font-semibold text-gray-900 mb-3">Cart</h2>
+          <h2 className="font-semibold text-gray-900 mb-3">{t("sales.cart", "Cart")}</h2>
 
-          {cart.length === 0 && <p className="text-sm text-gray-400">Cart is empty.</p>}
+          {cart.length === 0 && <p className="text-sm text-gray-400">{t("sales.cartEmpty", "Cart is empty.")}</p>}
 
           <div className="space-y-3 mb-4">
             {cart.map((line) => (
               <div key={line.productId} className="flex items-center justify-between text-sm">
                 <div className="flex-1 min-w-0">
                   <p className="text-gray-900 truncate">{line.name}</p>
-                  <p className="text-gray-400">{money(line.unitPrice)} each</p>
+                  <p className="text-gray-400">{money(line.unitPrice)} {t("sales.each", "each")}</p>
                 </div>
                 <input
                   type="number"
@@ -194,9 +198,11 @@ export function SalesPage() {
 
           <div className="border-t border-gray-100 pt-3 space-y-3">
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Customer (optional)</label>
+              <label className="block text-xs font-medium text-gray-500 mb-1">
+                {t("sales.customerOptional", "Customer (optional)")}
+              </label>
               <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} className="input">
-                <option value="">Walk-in customer</option>
+                <option value="">{t("sales.walkIn", "Walk-in customer")}</option>
                 {customers.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.fullName}
@@ -206,7 +212,7 @@ export function SalesPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Discount</label>
+              <label className="block text-xs font-medium text-gray-500 mb-1">{t("sales.discount", "Discount")}</label>
               <input
                 type="number"
                 min="0"
@@ -218,25 +224,27 @@ export function SalesPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Payment Method</label>
+              <label className="block text-xs font-medium text-gray-500 mb-1">
+                {t("sales.paymentMethod", "Payment Method")}
+              </label>
               <select
                 value={paymentMethod}
                 onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
                 className="input"
               >
-                <option value="CASH">Cash</option>
-                <option value="CARD">Card</option>
-                <option value="MOBILE_MONEY">Mobile Money</option>
-                <option value="OTHER">Other</option>
+                <option value="CASH">{t("sales.payment.cash", "Cash")}</option>
+                <option value="CARD">{t("sales.payment.card", "Card")}</option>
+                <option value="MOBILE_MONEY">{t("sales.payment.mobileMoney", "Mobile Money")}</option>
+                <option value="OTHER">{t("sales.payment.other", "Other")}</option>
               </select>
             </div>
 
             <div className="flex justify-between text-sm text-gray-600">
-              <span>Subtotal</span>
+              <span>{t("sales.subtotal", "Subtotal")}</span>
               <span>{money(subtotal)}</span>
             </div>
             <div className="flex justify-between font-semibold text-gray-900">
-              <span>Total</span>
+              <span>{t("sales.total", "Total")}</span>
               <span>{money(total)}</span>
             </div>
 
@@ -245,16 +253,18 @@ export function SalesPage() {
               disabled={cart.length === 0 || isSubmitting}
               className="w-full bg-blue-600 text-white py-2 rounded-md font-medium hover:bg-blue-700 disabled:opacity-50"
             >
-              {isSubmitting ? "Processing..." : "Complete Sale"}
+              {isSubmitting ? t("sales.processing", "Processing...") : t("sales.completeSale", "Complete Sale")}
             </button>
           </div>
         </div>
       </div>
 
       {completedSale && (
-        <Modal title="Sale Complete" onClose={() => setCompletedSale(null)}>
+        <Modal title={t("sales.saleComplete", "Sale Complete")} onClose={() => setCompletedSale(null)}>
           <div className="space-y-2 text-sm">
-            <p className="text-gray-500">Receipt #{completedSale.id.slice(0, 8)}</p>
+            <p className="text-gray-500">
+              {t("sales.receipt", "Receipt")} #{completedSale.id.slice(0, 8)}
+            </p>
             {completedSale.items.map((item, i) => (
               <div key={i} className="flex justify-between">
                 <span>
@@ -263,15 +273,15 @@ export function SalesPage() {
               </div>
             ))}
             <div className="border-t border-gray-100 pt-2 flex justify-between text-gray-600">
-              <span>Subtotal</span>
+              <span>{t("sales.subtotal", "Subtotal")}</span>
               <span>{money(completedSale.subtotal)}</span>
             </div>
             <div className="flex justify-between text-gray-600">
-              <span>Discount</span>
+              <span>{t("sales.discount", "Discount")}</span>
               <span>{money(completedSale.discount)}</span>
             </div>
             <div className="flex justify-between font-semibold text-gray-900">
-              <span>Total</span>
+              <span>{t("sales.total", "Total")}</span>
               <span>{money(completedSale.total)}</span>
             </div>
           </div>
@@ -279,7 +289,7 @@ export function SalesPage() {
             onClick={() => setCompletedSale(null)}
             className="w-full mt-4 bg-blue-600 text-white py-2 rounded-md font-medium hover:bg-blue-700"
           >
-            New Sale
+            {t("sales.title", "New Sale")}
           </button>
         </Modal>
       )}

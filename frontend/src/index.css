@@ -24,3 +24,59 @@ body {
     @apply inline-block text-xs font-medium px-2 py-0.5 rounded-full;
   }
 }
+
+/* ---- Home page (LandingPage.tsx) ---------------------------------------- */
+.home {
+  font-family: "Figtree", system-ui, "Segoe UI", Roboto, sans-serif;
+}
+.home-display {
+  font-family: "Bricolage Grotesque", "Figtree", system-ui, sans-serif;
+}
+.home-hand {
+  font-family: "Caveat", "Segoe Print", cursive;
+}
+.home-btn {
+  display: inline-block;
+  border-radius: 0.75rem;
+  background: #0f6b47;
+  padding: 0.6rem 1.1rem;
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+  transition: background-color 0.15s;
+}
+.home-btn:hover { background: #0b5639; }
+.home-btn:focus-visible, .home a:focus-visible, .home button:focus-visible {
+  outline: 3px solid #f2b21b;
+  outline-offset: 2px;
+}
+.home-btn-lg { padding: 0.9rem 1.4rem; font-size: 16px; }
+.home-btn-yellow { background: #f2b21b; color: #12352b; }
+.home-btn-yellow:hover { background: #ffc53d; }
+
+/* Exercise-book page: blue ruled lines every 34px and a red margin line. */
+.home-book {
+  background-color: #ffffff;
+  background-image:
+    linear-gradient(90deg, transparent 30px, #e8a3a3 30px, #e8a3a3 32px, transparent 32px),
+    repeating-linear-gradient(180deg, transparent 0, transparent 33px, #9dbce6 33px, #9dbce6 34px);
+  background-position: 0 0, 0 24px;
+}
+
+/* One entrance: the phone slides over the book once, after load. */
+@keyframes home-phone-in {
+  from { opacity: 0; transform: translate(40px, 24px) rotate(6deg); }
+  to   { opacity: 1; transform: translate(0, 0) rotate(3deg); }
+}
+.home-phone {
+  transform: rotate(3deg);
+  animation: home-phone-in 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) 0.35s both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .home-phone { animation: none; }
+}
+
+/* Slider photo: fade in when the business changes. */
+@keyframes home-fade-in { from { opacity: 0; } to { opacity: 1; } }
+.home-fade { animation: home-fade-in 0.35s ease-out both; }
+@media (prefers-reduced-motion: reduce) { .home-fade { animation: none; } }

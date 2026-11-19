@@ -28,10 +28,8 @@ export async function listCustomersHandler(req: Request, res: Response, next: Ne
 
 export async function getCustomerHandler(req: Request, res: Response, next: NextFunction) {
   try {
-    const customer = await customersService.getCustomerById(
-      req.user!.tenantId!,
-      req.params.id
-    );
+    const customerId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const customer = await customersService.getCustomerById(req.user!.tenantId!, customerId);
     res.status(200).json({ data: customer });
   } catch (err) {
     next(err);
@@ -41,9 +39,10 @@ export async function getCustomerHandler(req: Request, res: Response, next: Next
 export async function updateCustomerHandler(req: Request, res: Response, next: NextFunction) {
   try {
     const input = updateCustomerSchema.parse(req.body);
+    const customerId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
     const customer = await customersService.updateCustomer(
       req.user!.tenantId!,
-      req.params.id,
+      customerId,
       input
     );
     res.status(200).json({ data: customer });
@@ -54,7 +53,8 @@ export async function updateCustomerHandler(req: Request, res: Response, next: N
 
 export async function deleteCustomerHandler(req: Request, res: Response, next: NextFunction) {
   try {
-    await customersService.deleteCustomer(req.user!.tenantId!, req.params.id);
+    const customerId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    await customersService.deleteCustomer(req.user!.tenantId!, customerId);
     res.status(204).send();
   } catch (err) {
     next(err);

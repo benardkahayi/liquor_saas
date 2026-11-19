@@ -15,11 +15,8 @@ export async function createAdjustmentHandler(req: Request, res: Response, next:
 export async function listHistoryHandler(req: Request, res: Response, next: NextFunction) {
   try {
     const query = listHistoryQuerySchema.parse(req.query);
-    const result = await inventoryService.listHistoryForProduct(
-      req.user!.tenantId!,
-      req.params.productId,
-      query
-    );
+    const productId = Array.isArray(req.params.productId) ? req.params.productId[0] : req.params.productId;
+    const result = await inventoryService.listHistoryForProduct(req.user!.tenantId!, productId, query);
     res.status(200).json(result);
   } catch (err) {
     next(err);

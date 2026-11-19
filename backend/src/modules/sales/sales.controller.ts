@@ -28,7 +28,8 @@ export async function listSalesHandler(req: Request, res: Response, next: NextFu
 
 export async function getSaleHandler(req: Request, res: Response, next: NextFunction) {
   try {
-    const sale = await salesService.getSaleById(req.user!.tenantId!, req.params.id);
+    const saleId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const sale = await salesService.getSaleById(req.user!.tenantId!, saleId);
     res.status(200).json({ data: sale });
   } catch (err) {
     next(err);

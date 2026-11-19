@@ -9,6 +9,7 @@ interface TenantSettings {
   currency: string | null;
   primaryColor: string | null;
   receiptFooter: string | null;
+  enabledModules?: unknown;
 }
 
 interface Subscription {
@@ -22,6 +23,9 @@ interface Subscription {
 interface Tenant {
   id: string;
   name: string;
+  slug: string;
+  industry: string;
+  status: string;
   settings: TenantSettings | null;
   subscription: Subscription | null;
 }
@@ -38,7 +42,8 @@ const TenantContext = createContext<TenantContextValue | undefined>(undefined);
 export function TenantProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [tenant, setTenant] = useState<Tenant | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  // Starts true so screens wait for the business type instead of guessing.
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   function fetchTenant() {
@@ -46,7 +51,10 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     setError(null);
     api
-      .get("/tenants/settings")
+      // /tenants/current works for every staff role. /tenants/settings needs
+      // the settings.manage permission, so cashiers used to get no tenant
+      // at all — and the app couldn't tell which menu to show them.
+      .get("/tenants/current")
       .then((res) => setTenant(res.data.data))
       .catch(() => setError("Failed to load business settings"))
       .finally(() => setIsLoading(false));
@@ -55,11 +63,16 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!user || user.isSuperAdmin) {
       setTenant(null);
+      setIsLoading(false);
       return;
     }
     fetchTenant();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
+
+  useEffect(() => {
+    document.title = tenant ? `${tenant.name} — AB BusinessHub` : "AB BusinessHub";
+  }, [tenant]);
 
   return (
     <TenantContext.Provider value={{ tenant, isLoading, error, refetch: fetchTenant }}>

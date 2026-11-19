@@ -1,9 +1,7 @@
 import { db } from "@/config/db";
 
 export async function getLowStockReport(tenantId: string) {
-  return db.$queryRaw
-    { id: string; name: string; stockQuantity: number; minStockLevel: number }[]
-  >`
+  return db.$queryRaw<{ id: string; name: string; stockQuantity: number; minStockLevel: number }[]>`
     SELECT id, name, "stockQuantity", "minStockLevel"
     FROM products
     WHERE "tenantId" = ${tenantId} AND "stockQuantity" <= "minStockLevel" AND status = 'ACTIVE'
@@ -47,8 +45,8 @@ export async function getSalesReport(tenantId: string, input: SalesReportInput) 
       _count: true,
     }),
 
-    db.$queryRaw<{ date: Date; total: string; count: string }[]>`
-      SELECT date_trunc('day', "createdAt") as date, SUM(total) as total, COUNT(*) as count
+    db.$queryRaw<{ date: Date; total: string; count: number }[]>`
+      SELECT date_trunc('day', "createdAt") as date, SUM(total) as total, COUNT(*)::int as count
       FROM sales
       WHERE "tenantId" = ${tenantId}
         AND status = 'COMPLETED'

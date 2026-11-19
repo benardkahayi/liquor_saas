@@ -1,6 +1,7 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { api } from "../api/client";
 import { money } from "../lib/money";
+import { useLanguage } from "../context/LanguageContext";
 import { Modal } from "../components/Modal";
 import { Pagination } from "../components/Pagination";
 import { ErrorBanner, extractErrorMessage } from "../components/ErrorBanner";
@@ -23,6 +24,7 @@ interface PaginationInfo {
 const EMPTY_FORM = { category: "", amount: "", description: "", date: "" };
 
 export function ExpensesPage() {
+  const { t } = useLanguage();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [pagination, setPagination] = useState<PaginationInfo | null>(null);
   const [page, setPage] = useState(1);
@@ -41,31 +43,29 @@ export function ExpensesPage() {
         setPagination(res.data.pagination);
         setError(null);
       })
-      .catch((err) => setError(extractErrorMessage(err, "Failed to load expenses")))
+      .catch((err) => setError(extractErrorMessage(err, t("expenses.error.load", "Failed to load expenses"))))
       .finally(() => setIsLoading(false));
   }
 
   useEffect(load, [page, category]);
 
   async function handleDelete(expense: Expense) {
-    if (!confirm(`Delete this ${expense.category} expense?`)) return;
+    if (!confirm(`${t("expenses.deleteConfirm", "Delete this")} ${expense.category} ${t("expenses.deleteConfirmSuffix", "expense?")}`))
+      return;
     try {
       await api.delete(`/expenses/${expense.id}`);
       load();
     } catch (err) {
-      setError(extractErrorMessage(err, "Failed to delete expense"));
+      setError(extractErrorMessage(err, t("expenses.error.delete", "Failed to delete expense")));
     }
   }
 
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Expenses</h1>
-        <button
-          onClick={() => setIsCreating(true)}
-          className="btn-primary px-4 py-2 text-sm"
-        >
-          Add Expense
+        <h1 className="text-2xl font-bold text-gray-900">{t("expenses.title", "Expenses")}</h1>
+        <button onClick={() => setIsCreating(true)} className="btn-primary px-4 py-2 text-sm">
+          {t("expenses.add", "Add Expense")}
         </button>
       </div>
 
@@ -73,7 +73,7 @@ export function ExpensesPage() {
 
       <input
         type="text"
-        placeholder="Filter by category..."
+        placeholder={t("expenses.filterByCategory", "Filter by category...")}
         value={category}
         onChange={(e) => {
           setPage(1);
@@ -86,10 +86,10 @@ export function ExpensesPage() {
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-gray-500 text-left uppercase text-xs tracking-wide">
             <tr>
-              <th className="px-4 py-2 font-medium">Date</th>
-              <th className="px-4 py-2 font-medium">Category</th>
-              <th className="px-4 py-2 font-medium">Description</th>
-              <th className="px-4 py-2 font-medium">Amount</th>
+              <th className="px-4 py-2 font-medium">{t("expenses.col.date", "Date")}</th>
+              <th className="px-4 py-2 font-medium">{t("expenses.col.category", "Category")}</th>
+              <th className="px-4 py-2 font-medium">{t("expenses.col.description", "Description")}</th>
+              <th className="px-4 py-2 font-medium">{t("expenses.col.amount", "Amount")}</th>
               <th className="px-4 py-2 font-medium"></th>
             </tr>
           </thead>
@@ -97,14 +97,14 @@ export function ExpensesPage() {
             {isLoading && (
               <tr>
                 <td colSpan={5} className="px-4 py-6 text-center text-gray-400">
-                  Loading...
+                  {t("common.loading", "Loading...")}
                 </td>
               </tr>
             )}
             {!isLoading && expenses.length === 0 && (
               <tr>
                 <td colSpan={5} className="px-4 py-6 text-center text-gray-400">
-                  No expenses found.
+                  {t("expenses.empty", "No expenses found.")}
                 </td>
               </tr>
             )}
@@ -116,10 +116,10 @@ export function ExpensesPage() {
                 <td className="px-4 py-2 text-gray-600">{money(expense.amount)}</td>
                 <td className="px-4 py-2 text-right space-x-3 whitespace-nowrap">
                   <button onClick={() => setEditing(expense)} className="text-blue-600 hover:underline">
-                    Edit
+                    {t("common.edit", "Edit")}
                   </button>
                   <button onClick={() => handleDelete(expense)} className="text-red-600 hover:underline">
-                    Delete
+                    {t("common.delete", "Delete")}
                   </button>
                 </td>
               </tr>
@@ -157,6 +157,7 @@ function ExpenseFormModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { t } = useLanguage();
   const [form, setForm] = useState(
     expense
       ? {
@@ -190,30 +191,33 @@ function ExpenseFormModal({
       }
       onSaved();
     } catch (err) {
-      setError(extractErrorMessage(err, "Failed to save expense"));
+      setError(extractErrorMessage(err, t("expenses.error.save", "Failed to save expense")));
     } finally {
       setIsSubmitting(false);
     }
   }
 
   return (
-    <Modal title={expense ? "Edit Expense" : "Add Expense"} onClose={onClose}>
+    <Modal
+      title={expense ? t("expenses.editTitle", "Edit Expense") : t("expenses.addTitle", "Add Expense")}
+      onClose={onClose}
+    >
       <form onSubmit={handleSubmit} className="space-y-4">
         <ErrorBanner message={error} />
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t("expenses.col.category", "Category")}</label>
           <input
             required
             value={form.category}
             onChange={(e) => setForm({ ...form, category: e.target.value })}
-            placeholder="e.g. Rent, Utilities, Transport"
+            placeholder={t("expenses.categoryPlaceholder", "e.g. Rent, Utilities, Transport")}
             className="input"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Amount</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t("expenses.col.amount", "Amount")}</label>
           <input
             required
             type="number"
@@ -226,7 +230,7 @@ function ExpenseFormModal({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t("expenses.col.date", "Date")}</label>
           <input
             type="date"
             value={form.date}
@@ -236,7 +240,7 @@ function ExpenseFormModal({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t("expenses.col.description", "Description")}</label>
           <input
             value={form.description}
             onChange={(e) => setForm({ ...form, description: e.target.value })}
@@ -246,14 +250,10 @@ function ExpenseFormModal({
 
         <div className="flex justify-end gap-2 pt-2">
           <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900">
-            Cancel
+            {t("common.cancel", "Cancel")}
           </button>
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="btn-primary px-4 py-2 text-sm"
-          >
-            {isSubmitting ? "Saving..." : "Save"}
+          <button type="submit" disabled={isSubmitting} className="btn-primary px-4 py-2 text-sm">
+            {isSubmitting ? t("common.saving", "Saving...") : t("common.save", "Save")}
           </button>
         </div>
       </form>

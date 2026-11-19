@@ -19,6 +19,15 @@ export async function getSummaryHandler(req: Request, res: Response, next: NextF
   }
 }
 
+export async function getRestaurantSummaryHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const summary = await dashboardService.getRestaurantSummary(req.user!.tenantId!);
+    res.status(200).json({ data: summary });
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function getSalesOverTimeHandler(req: Request, res: Response, next: NextFunction) {
   try {
     const { days } = daysQuerySchema.parse(req.query);

@@ -6,6 +6,7 @@ import {
   signRefreshToken,
   verifyRefreshToken,
 } from "@/common/utils/jwt";
+import { generateUniqueSlug } from "@/common/utils/slug";
 import { ConflictError, UnauthorizedError, NotFoundError } from "@/common/errors/AppError";
 
 const DEFAULT_PERMISSIONS = [
@@ -13,6 +14,8 @@ const DEFAULT_PERMISSIONS = [
   { key: "products.manage", label: "Create/edit/delete products" },
   { key: "sales.create", label: "Create sales" },
   { key: "sales.void", label: "Void/refund sales" },
+  { key: "sales.list", label: "View sales history" },
+  { key: "sales.read", label: "View a single sale" },
   { key: "inventory.manage", label: "Adjust inventory" },
   { key: "customers.view", label: "View customers" },
   { key: "customers.manage", label: "Manage customers" },
@@ -20,6 +23,15 @@ const DEFAULT_PERMISSIONS = [
   { key: "expenses.manage", label: "Manage expenses" },
   { key: "reports.view", label: "View reports" },
   { key: "settings.manage", label: "Manage tenant settings" },
+  { key: "restaurant.menu.manage", label: "Manage restaurant menu" },
+  { key: "restaurant.orders.create", label: "Create restaurant orders" },
+  { key: "restaurant.orders.view", label: "View restaurant orders" },
+  { key: "restaurant.payments.record", label: "Record restaurant payments" },
+  { key: "restaurant.tables.manage", label: "Manage restaurant tables" },
+  { key: "restaurant.customers.manage", label: "Manage restaurant customers" },
+  { key: "restaurant.expenses.record", label: "Record restaurant expenses" },
+  { key: "restaurant.reports.view", label: "View restaurant reports" },
+  { key: "restaurant.employees.manage", label: "Manage restaurant employees" },
 ] as const;
 
 interface RegisterInput {
@@ -27,6 +39,7 @@ interface RegisterInput {
   ownerEmail: string;
   ownerPassword: string;
   ownerFullName: string;
+  industry?: string;
 }
 
 export async function registerTenant(input: RegisterInput) {
@@ -35,12 +48,7 @@ export async function registerTenant(input: RegisterInput) {
     throw new ConflictError("An account with this email already exists");
   }
 
-  const slug = input.businessName
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
-
+  const slug = await generateUniqueSlug(input.businessName);
   const passwordHash = await hashPassword(input.ownerPassword);
 
   const result = await db.$transaction(
@@ -49,6 +57,7 @@ export async function registerTenant(input: RegisterInput) {
         data: {
           name: input.businessName,
           slug,
+          ...(input.industry && { industry: input.industry }),
           settings: { create: {} },
           subscription: { create: {} },
         },
@@ -71,7 +80,15 @@ export async function registerTenant(input: RegisterInput) {
         },
       });
 
-      const cashierPermKeys = ["products.view", "sales.create", "customers.view"];
+      const cashierPermKeys = [
+        "products.view",
+        "sales.create",
+        "customers.view",
+        // Restaurant counter: take orders, receive payments, see debts/daybook
+        "restaurant.orders.create",
+        "restaurant.orders.view",
+        "restaurant.payments.record",
+      ];
       await tx.role.create({
         data: {
           tenantId: tenant.id,
@@ -80,6 +97,38 @@ export async function registerTenant(input: RegisterInput) {
           permissions: {
             create: allPermissions
               .filter((p: { key: string }) => cashierPermKeys.includes(p.key))
+              .map((p: { id: string }) => ({ permissionId: p.id })),
+          },
+        },
+      });
+
+      const managerPermKeys = [
+        "products.view",
+        "products.manage",
+        "sales.create",
+        "sales.list",
+        "sales.read",
+        "customers.view",
+        "customers.manage",
+        "expenses.manage",
+        "reports.view",
+        "restaurant.menu.manage",
+        "restaurant.orders.create",
+        "restaurant.orders.view",
+        "restaurant.payments.record",
+        "restaurant.tables.manage",
+        "restaurant.customers.manage",
+        "restaurant.expenses.record",
+        "restaurant.reports.view",
+      ];
+      await tx.role.create({
+        data: {
+          tenantId: tenant.id,
+          name: "Manager",
+          isSystem: true,
+          permissions: {
+            create: allPermissions
+              .filter((p: { key: string }) => managerPermKeys.includes(p.key))
               .map((p: { id: string }) => ({ permissionId: p.id })),
           },
         },
@@ -100,7 +149,10 @@ export async function registerTenant(input: RegisterInput) {
     { timeout: 15000 }
   );
 
-  return issueTokens(result.owner.id, result.tenant.id, false, result.owner.roleId);
+  return {
+    ...issueTokens(result.owner.id, result.tenant.id, false, result.owner.roleId),
+    tenantSlug: result.tenant.slug,
+  };
 }
 
 interface LoginInput {
@@ -109,7 +161,10 @@ interface LoginInput {
 }
 
 export async function login(input: LoginInput) {
-  const user = await db.user.findUnique({ where: { email: input.email } });
+  const user = await db.user.findUnique({
+    where: { email: input.email },
+    include: { tenant: { select: { slug: true } } },
+  });
 
   if (!user || !user.isActive) {
     throw new UnauthorizedError("Invalid email or password");
@@ -120,7 +175,10 @@ export async function login(input: LoginInput) {
     throw new UnauthorizedError("Invalid email or password");
   }
 
-  return issueTokens(user.id, user.tenantId, user.isSuperAdmin, user.roleId);
+  return {
+    ...issueTokens(user.id, user.tenantId, user.isSuperAdmin, user.roleId),
+    tenantSlug: user.tenant?.slug ?? null,
+  };
 }
 
 export async function refreshAccessToken(refreshToken: string) {
