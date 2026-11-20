@@ -10,7 +10,7 @@ export function Modal({ title, onClose, children }: ModalProps) {
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
       <div className="w-full max-w-lg bg-white rounded-xl shadow-lg border border-gray-200 max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200">
+        <div className="flex justify-between items-center px-4 py-4 border-b border-gray-200 sm:px-6">
           <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
           <button
             onClick={onClose}
@@ -20,7 +20,7 @@ export function Modal({ title, onClose, children }: ModalProps) {
             &times;
           </button>
         </div>
-        <div className="p-6">{children}</div>
+        <div className="p-4 sm:p-6">{children}</div>
       </div>
     </div>
   );

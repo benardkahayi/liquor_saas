@@ -1,5 +1,6 @@
+import { useEffect, useState } from "react";
 import type { ReactNode, ComponentType } from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
   Package,
@@ -19,6 +20,8 @@ import {
   LogOut,
   ShoppingBag,
   BookOpen,
+  Menu,
+  X,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useTenant } from "../context/TenantContext";
@@ -75,6 +78,14 @@ export function Layout({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
   const { tenant, isLoading: tenantLoading } = useTenant();
   const { t } = useLanguage();
+  const location = useLocation();
+
+  // On phones and tablets the menu is a drawer opened from the top bar;
+  // it closes by itself when you pick a page.
+  const [menuOpen, setMenuOpen] = useState(false);
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [location.pathname]);
 
   const isCashier = user?.role?.name === "Cashier";
   // Until we know the business type, show only the shared items so the menu
@@ -98,14 +109,33 @@ export function Layout({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen flex bg-gray-50">
-      <aside className="w-56 shrink-0 bg-white border-r border-gray-200 p-4 flex flex-col">
+      {menuOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/40 lg:hidden"
+          onClick={() => setMenuOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 flex w-64 shrink-0 flex-col overflow-y-auto border-r border-gray-200 bg-white p-4 transition-transform duration-200 lg:sticky lg:top-0 lg:h-screen lg:w-56 lg:translate-x-0 ${
+          menuOpen ? "translate-x-0 shadow-xl" : "-translate-x-full"
+        }`}
+      >
         <div className="flex items-center gap-3 px-2 pb-6">
           <div className="w-9 h-9 rounded-lg bg-amber-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
             {initials}
           </div>
-          <span className="text-sm font-semibold leading-tight text-gray-900">
+          <span className="flex-1 text-sm font-semibold leading-tight text-gray-900">
             {displayName}
           </span>
+          <button
+            type="button"
+            onClick={() => setMenuOpen(false)}
+            className="rounded-lg p-1.5 text-gray-500 hover:bg-gray-100 lg:hidden"
+            aria-label={t("layout.closeMenu", "Close menu")}
+          >
+            <X size={20} />
+          </button>
         </div>
 
         <div className="px-2 pb-6">
@@ -195,11 +225,23 @@ export function Layout({ children }: { children: ReactNode }) {
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-end gap-3">
-          <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-medium">
+        <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-gray-200 bg-white px-4 py-3 sm:px-6">
+          <button
+            type="button"
+            onClick={() => setMenuOpen(true)}
+            className="-ml-1 rounded-lg p-2 text-gray-700 hover:bg-gray-100 lg:hidden"
+            aria-label={t("layout.openMenu", "Open menu")}
+          >
+            <Menu size={22} />
+          </button>
+          <span className="min-w-0 flex-1 truncate text-sm font-semibold text-gray-900 lg:hidden">
+            {displayName}
+          </span>
+          <div className="hidden flex-1 lg:block" />
+          <div className="w-8 h-8 shrink-0 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-medium">
             {user?.fullName?.charAt(0).toUpperCase()}
           </div>
-          <div>
+          <div className="hidden sm:block">
             <p className="text-sm font-medium text-gray-900 leading-tight">{user?.fullName}</p>
             <p className="text-xs text-gray-500 leading-tight">
               {user?.role?.name ?? t("layout.superAdminRole", "Super Admin")}
@@ -207,7 +249,7 @@ export function Layout({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        <main className="flex-1 p-8 overflow-y-auto">{children}</main>
+        <main className="min-w-0 flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
       </div>
     </div>
   );

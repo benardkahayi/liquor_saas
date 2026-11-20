@@ -109,7 +109,7 @@ export function ProductsPage() {
 
       <ErrorBanner message={error} />
 
-      <div className="flex gap-4 mb-4">
+      <div className="flex flex-wrap items-center gap-3 mb-4">
         <input
           type="text"
           placeholder={t("products.search", "Search products...")}
@@ -118,7 +118,7 @@ export function ProductsPage() {
             setPage(1);
             setSearch(e.target.value);
           }}
-          className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="min-w-0 flex-1 basis-56 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
         <label className="flex items-center gap-2 text-sm text-gray-700 whitespace-nowrap">
           <input
@@ -133,8 +133,8 @@ export function ProductsPage() {
         </label>
       </div>
 
-      <div className="card overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="card overflow-x-auto">
+        <table className="w-full min-w-[560px] text-sm">
           <thead className="bg-gray-50 text-gray-500 text-left uppercase text-xs tracking-wide">
             <tr>
               <th className="px-4 py-2 font-medium">{t("products.col.name", "Name")}</th>

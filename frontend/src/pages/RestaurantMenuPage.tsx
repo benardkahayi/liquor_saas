@@ -360,24 +360,35 @@ export function RestaurantMenuPage () {
           </div>
         ) : (
           <div className='overflow-x-auto'>
-            <table className='w-full min-w-[700px] text-left text-sm'>
+            <table className='w-full text-left text-sm md:min-w-[700px]'>
               <thead className='bg-gray-50 text-xs uppercase text-gray-500'>
                 <tr>
-                  <th className='px-5 py-4'>Item</th>
-                  <th className='px-5 py-4'>Category</th>
-                  <th className='px-5 py-4'>Price</th>
-                  <th className='px-5 py-4'>Availability</th>
-                  <th className='px-5 py-4 text-right'>Actions</th>
+                  <th className='px-3 py-4 md:px-5'>Item</th>
+                  <th className='hidden px-5 py-4 md:table-cell'>Category</th>
+                  <th className='px-3 py-4 md:px-5'>Price</th>
+                  <th className='hidden px-5 py-4 md:table-cell'>Availability</th>
+                  <th className='px-3 py-4 text-right md:px-5'>Actions</th>
                 </tr>
               </thead>
               <tbody className='divide-y divide-gray-100'>
                 {items.map(item => (
                   <tr key={item.id} className='hover:bg-gray-50'>
-                    <td className='px-5 py-4'>
-                      <div className='flex items-center gap-3'>
-                        <DishThumb src={menuImageUrl(item)} />
+                    <td className='px-3 py-4 md:px-5'>
+                      <div className='flex items-center gap-2.5 md:gap-3'>
+                        <DishThumb src={menuImageUrl(item)} size={40} />
                         <div className='min-w-0'>
                           <p className='font-semibold text-gray-900'>{item.name}</p>
+                          <p className='text-xs text-gray-500 md:hidden'>{item.category}</p>
+                          {/* Phones: availability sits under the name to save width */}
+                          <button
+                            type='button'
+                            onClick={() => handleToggleAvailability(item)}
+                            className={`mt-1.5 inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold md:hidden ${
+                              item.isAvailable ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'
+                            }`}
+                          >
+                            {item.isAvailable ? 'Available' : 'Unavailable'}
+                          </button>
                           {item.description && (
                             <p className='mt-0.5 max-w-xs truncate text-xs text-gray-400'>
                               {item.description}
@@ -386,15 +397,15 @@ export function RestaurantMenuPage () {
                         </div>
                       </div>
                     </td>
-                    <td className='px-5 py-4'>
+                    <td className='hidden px-5 py-4 md:table-cell'>
                       <span className='inline-flex rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700'>
                         {item.category}
                       </span>
                     </td>
-                    <td className='px-5 py-4 font-medium'>
+                    <td className='whitespace-nowrap px-3 py-4 md:px-5 font-medium'>
                       {money(item.price)}
                     </td>
-                    <td className='px-5 py-4'>
+                    <td className='hidden px-5 py-4 md:table-cell'>
                       <button
                         type='button'
                         onClick={() => handleToggleAvailability(item)}
@@ -408,12 +419,12 @@ export function RestaurantMenuPage () {
                         {item.isAvailable ? 'Available' : 'Unavailable'}
                       </button>
                     </td>
-                    <td className='px-5 py-4'>
-                      <div className='flex justify-end gap-2'>
+                    <td className='px-3 py-4 md:px-5'>
+                      <div className='flex justify-end gap-1 md:gap-2'>
                         <button
                           type='button'
                           onClick={() => openEdit(item)}
-                          className='rounded-lg border border-gray-200 p-2 text-gray-500 hover:bg-gray-50 hover:text-gray-700'
+                          className='rounded-lg border border-gray-200 p-1.5 text-gray-500 hover:bg-gray-50 hover:text-gray-700 md:p-2'
                           aria-label={`Edit ${item.name}`}
                         >
                           <Pencil size={16} />
@@ -421,7 +432,7 @@ export function RestaurantMenuPage () {
                         <button
                           type='button'
                           onClick={() => handleDeactivate(item)}
-                          className='rounded-lg border border-gray-200 p-2 text-gray-500 hover:bg-red-50 hover:text-red-600'
+                          className='rounded-lg border border-gray-200 p-1.5 text-gray-500 hover:bg-red-50 hover:text-red-600 md:p-2'
                           aria-label={`Remove ${item.name}`}
                         >
                           <Trash2 size={16} />

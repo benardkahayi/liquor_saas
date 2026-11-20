@@ -82,8 +82,8 @@ export function ExpensesPage() {
         className="input mb-4"
       />
 
-      <div className="card overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="card overflow-x-auto">
+        <table className="w-full min-w-[560px] text-sm">
           <thead className="bg-gray-50 text-gray-500 text-left uppercase text-xs tracking-wide">
             <tr>
               <th className="px-4 py-2 font-medium">{t("expenses.col.date", "Date")}</th>

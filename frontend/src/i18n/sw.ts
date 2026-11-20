@@ -406,7 +406,7 @@ export const sw: Record<string, string> = {
   "counter.emptyMenu": "Hakuna vyakula bado. Ongeza kwanza kwenye Menyu ya Chakula.",
   "counter.noMatch": "Hakuna kinacholingana na utafutaji.",
   "counter.bill": "Bili",
-  "counter.emptyBill": "Gusa vyakula upande wa kushoto kuviongeza.",
+  "counter.emptyBill": "Gusa chakula kukiongeza kwenye bili.",
   "counter.total": "Jumla",
   "counter.received": "Kiasi kilichopokelewa",
   "counter.exact": "Kamili",

@@ -179,7 +179,7 @@ export function RestaurantCounterPage () {
 
       <ErrorBanner message={error} />
 
-      <div className='grid gap-6 lg:grid-cols-[1fr_380px]'>
+      <div className={`grid gap-6 lg:grid-cols-[1fr_380px] ${cart.length > 0 ? 'pb-24 lg:pb-0' : ''}`}>
         {/* Menu */}
         <div className='space-y-4'>
           <div className='flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5'>
@@ -259,8 +259,25 @@ export function RestaurantCounterPage () {
           )}
         </div>
 
+        {/* Phones: the bill is below the menu, so keep its total in view */}
+        {cart.length > 0 && (
+          <div className='fixed inset-x-0 bottom-0 z-30 border-t border-gray-200 bg-white/95 p-3 backdrop-blur lg:hidden'>
+            <button
+              type='button'
+              onClick={() => document.getElementById('counter-bill')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+              className='flex w-full items-center justify-between rounded-xl bg-emerald-600 px-4 py-3 text-white'
+            >
+              <span className='flex items-center gap-2 text-sm font-semibold'>
+                <ShoppingBag size={18} />
+                {t('counter.bill', 'Bill')} · {cart.reduce((n, l) => n + l.quantity, 0)}
+              </span>
+              <span className='text-lg font-bold'>{money(total)}</span>
+            </button>
+          </div>
+        )}
+
         {/* Bill */}
-        <div className='h-fit space-y-4 rounded-2xl border border-gray-200 bg-white p-5 lg:sticky lg:top-4'>
+        <div id='counter-bill' className='h-fit scroll-mt-20 space-y-4 rounded-2xl border border-gray-200 bg-white p-5 lg:sticky lg:top-20'>
           <div className='flex items-center gap-2'>
             <ShoppingBag size={18} className='text-emerald-600' />
             <h2 className='font-semibold text-gray-900'>{t('counter.bill', 'Bill')}</h2>
@@ -268,7 +285,7 @@ export function RestaurantCounterPage () {
 
           {cart.length === 0 ? (
             <p className='py-6 text-center text-sm text-gray-400'>
-              {t('counter.emptyBill', 'Tap items on the left to add them.')}
+              {t('counter.emptyBill', 'Tap a dish to add it to the bill.')}
             </p>
           ) : (
             <ul className='divide-y divide-gray-100'>
