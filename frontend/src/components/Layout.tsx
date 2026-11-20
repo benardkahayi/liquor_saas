@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { ReactNode, ComponentType } from "react";
 import { NavLink, useLocation } from "react-router-dom";
+import { useTheme, type ThemeChoice } from "../lib/theme";
 import {
   LayoutDashboard,
   Package,
@@ -22,6 +23,9 @@ import {
   BookOpen,
   Menu,
   X,
+  Sun,
+  Moon,
+  MonitorSmartphone,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useTenant } from "../context/TenantContext";
@@ -87,6 +91,25 @@ export function Layout({ children }: { children: ReactNode }) {
     setMenuOpen(false);
   }, [location.pathname]);
 
+  // Light / dark. "Auto" follows the device (and battery saver on phones
+  // that turn dark with it).
+  const { choice: theme, setChoice: setTheme, isDark } = useTheme();
+  useEffect(() => {
+    // Also colour the page behind the app, so over-scrolling on phones
+    // doesn't flash white.
+    document.documentElement.style.backgroundColor = isDark ? "#0b1120" : "";
+    document.documentElement.style.colorScheme = isDark ? "dark" : "";
+    return () => {
+      document.documentElement.style.backgroundColor = "";
+      document.documentElement.style.colorScheme = "";
+    };
+  }, [isDark]);
+  const themeOptions: { value: ThemeChoice; label: string; icon: typeof Sun }[] = [
+    { value: "system", label: t("theme.auto", "Auto"), icon: MonitorSmartphone },
+    { value: "light", label: t("theme.light", "Light"), icon: Sun },
+    { value: "dark", label: t("theme.dark", "Dark"), icon: Moon },
+  ];
+
   const isCashier = user?.role?.name === "Cashier";
   // Until we know the business type, show only the shared items so the menu
   // doesn't flash shop items at a restaurant (or the reverse).
@@ -108,7 +131,7 @@ export function Layout({ children }: { children: ReactNode }) {
     .toUpperCase();
 
   return (
-    <div className="min-h-screen flex bg-gray-50">
+    <div className={`min-h-screen flex bg-gray-50 ${isDark ? "app-dark" : ""}`}>
       {menuOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/40 lg:hidden"
@@ -140,6 +163,28 @@ export function Layout({ children }: { children: ReactNode }) {
 
         <div className="px-2 pb-6">
           <LanguageSwitcher />
+          <div
+            role="radiogroup"
+            aria-label={t("theme.label", "Appearance")}
+            className="mt-2 grid grid-cols-3 gap-1 rounded-lg bg-gray-100 p-1"
+          >
+            {themeOptions.map(({ value, label, icon: Icon }) => (
+              <button
+                key={value}
+                type="button"
+                role="radio"
+                aria-checked={theme === value}
+                onClick={() => setTheme(value)}
+                title={value === "system" ? t("theme.autoHint", "Follows your phone or computer (dark when it is dark)") : label}
+                className={`flex items-center justify-center gap-1 rounded-md py-1.5 text-xs font-medium ${
+                  theme === value ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-900"
+                }`}
+              >
+                <Icon size={14} />
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
 
         <nav className="flex flex-col gap-5">

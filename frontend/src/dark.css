@@ -1,0 +1,121 @@
+/* Dark mode for the app after login (see lib/theme.ts).
+   Generated from the colour classes the app's pages use: each light class
+   gets a dark equivalent when the app is in dark mode. The home page and
+   the sign-in pages are not affected.
+   If you add a new colour class to a page and it looks wrong in dark mode,
+   add a matching line here. */
+
+.app-dark {
+  color-scheme: dark; /* dark scrollbars, date pickers and select menus */
+  background-color: #0b1120;
+  color: #e5e7eb;
+}
+
+/* Inputs, selects and text areas that don't set their own background */
+.app-dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+.app-dark select,
+.app-dark textarea {
+  background-color: #0f172a;
+  color: #f3f4f6;
+  border-color: #374151;
+}
+.app-dark input::placeholder,
+.app-dark textarea::placeholder {
+  color: #6b7280;
+}
+
+/* The shared ".card" style */
+.app-dark .card {
+  background-color: #111827;
+  border-color: #1f2937;
+}
+
+/* Dark "selected" pills (bg-gray-900 + white text) turn light in dark mode */
+.app-dark .bg-gray-900 { background-color: #e5e7eb; }
+.app-dark .bg-gray-900.text-white { color: #111827; }
+
+/* Softer shadows on dark backgrounds */
+.app-dark .shadow-sm, .app-dark .shadow, .app-dark .shadow-md, .app-dark .shadow-lg, .app-dark .shadow-xl {
+  --tw-shadow-color: rgba(0, 0, 0, 0.6);
+}
+
+/* Photos stay as they are */
+.app-dark img { color-scheme: normal; }
+
+/* ---- generated ---- */
+.app-dark .text-gray-900 { color: #f3f4f6; }
+.app-dark .text-gray-500 { color: #9ca3af; }
+.app-dark .text-gray-400 { color: #7c8594; }
+.app-dark .text-gray-700 { color: #d1d5db; }
+.app-dark .border-gray-200 { border-color: #2a3443; }
+.app-dark .bg-white { background-color: #111827; }
+.app-dark .text-gray-600 { color: #b6bdc8; }
+.app-dark .hover\:bg-gray-50:hover { background-color: #0b1120; }
+.app-dark .border-gray-300 { border-color: #374151; }
+.app-dark .text-amber-700 { color: #fcd34d; }
+.app-dark .text-blue-600 { color: #60a5fa; }
+.app-dark .text-emerald-700 { color: #6ee7b7; }
+.app-dark .border-gray-100 { border-color: #1f2937; }
+.app-dark .bg-gray-50 { background-color: #0b1120; }
+.app-dark .bg-gray-100 { background-color: #1f2937; }
+.app-dark .text-emerald-600 { color: #34d399; }
+.app-dark .text-red-600 { color: #f87171; }
+.app-dark .text-slate-500 { color: #9ca3af; }
+.app-dark .bg-emerald-50 { background-color: rgba(16, 185, 129, 0.12); }
+.app-dark .text-red-700 { color: #fca5a5; }
+.app-dark .divide-gray-100 > :not(:last-child) { border-color: #1f2937; }
+.app-dark .bg-red-100 { background-color: rgba(239, 68, 68, 0.18); }
+.app-dark .bg-blue-100 { background-color: rgba(59, 130, 246, 0.18); }
+.app-dark .hover\:text-gray-900:hover { color: #f3f4f6; }
+.app-dark .border-slate-200 { border-color: #2a3443; }
+.app-dark .bg-emerald-100 { background-color: rgba(16, 185, 129, 0.18); }
+.app-dark .text-blue-700 { color: #93c5fd; }
+.app-dark .text-slate-400 { color: #7c8594; }
+.app-dark .text-green-700 { color: #86efac; }
+.app-dark .text-green-600 { color: #4ade80; }
+.app-dark .hover\:text-gray-700:hover { color: #d1d5db; }
+.app-dark .hover\:bg-gray-100:hover { background-color: #1f2937; }
+.app-dark .border-amber-200 { border-color: rgba(245, 158, 11, 0.35); }
+.app-dark .bg-red-50 { background-color: rgba(239, 68, 68, 0.12); }
+.app-dark .bg-green-100 { background-color: rgba(34, 197, 94, 0.18); }
+.app-dark .bg-amber-50 { background-color: rgba(245, 158, 11, 0.12); }
+.app-dark .text-orange-700 { color: #fdba74; }
+.app-dark .text-orange-600 { color: #fb923c; }
+.app-dark .hover\:text-red-600:hover { color: #f87171; }
+.app-dark .border-emerald-200 { border-color: rgba(16, 185, 129, 0.35); }
+.app-dark .bg-purple-100 { background-color: rgba(168, 85, 247, 0.18); }
+.app-dark .text-purple-600 { color: #c084fc; }
+.app-dark .text-emerald-800 { color: #6ee7b7; }
+.app-dark .hover\:text-blue-600:hover { color: #60a5fa; }
+.app-dark .hover\:border-emerald-300:hover { border-color: rgba(16, 185, 129, 0.45); }
+.app-dark .hover\:bg-red-50:hover { background-color: rgba(239, 68, 68, 0.12); }
+.app-dark .border-slate-100 { border-color: #1f2937; }
+.app-dark .border-red-200 { border-color: rgba(239, 68, 68, 0.35); }
+.app-dark .border-orange-200 { border-color: rgba(249, 115, 22, 0.35); }
+.app-dark .bg-slate-50 { background-color: #0b1120; }
+.app-dark .bg-orange-50 { background-color: rgba(249, 115, 22, 0.12); }
+.app-dark .bg-blue-50 { background-color: rgba(59, 130, 246, 0.12); }
+.app-dark .bg-amber-100 { background-color: rgba(245, 158, 11, 0.18); }
+.app-dark .text-slate-900 { color: #f3f4f6; }
+.app-dark .text-slate-800 { color: #e5e7eb; }
+.app-dark .text-red-800 { color: #fca5a5; }
+.app-dark .text-purple-800 { color: #d8b4fe; }
+.app-dark .text-amber-900 { color: #fcd34d; }
+.app-dark .text-amber-800 { color: #fcd34d; }
+.app-dark .text-amber-600 { color: #fbbf24; }
+.app-dark .ring-gray-200 { --tw-ring-color: #2a3443; }
+.app-dark .hover\:text-emerald-700:hover { color: #6ee7b7; }
+.app-dark .hover\:bg-slate-50:hover { background-color: #0b1120; }
+.app-dark .hover\:bg-red-200:hover { background-color: rgba(239, 68, 68, 0.28); }
+.app-dark .hover\:bg-red-100:hover { background-color: rgba(239, 68, 68, 0.18); }
+.app-dark .hover\:bg-emerald-200:hover { background-color: rgba(16, 185, 129, 0.28); }
+.app-dark .hover\:bg-amber-50:hover { background-color: rgba(245, 158, 11, 0.12); }
+.app-dark .group:hover .group-hover\:bg-blue-200 { background-color: rgba(59, 130, 246, 0.28); }
+.app-dark .divide-slate-100 > :not(:last-child) { border-color: #1f2937; }
+.app-dark .disabled\:text-gray-500:disabled { color: #9ca3af; }
+.app-dark .disabled\:bg-gray-100:disabled { background-color: #1f2937; }
+.app-dark .border-green-200 { border-color: rgba(34, 197, 94, 0.35); }
+.app-dark .border-blue-200 { border-color: rgba(59, 130, 246, 0.35); }
+.app-dark .border-amber-300 { border-color: rgba(245, 158, 11, 0.45); }
+.app-dark .bg-orange-100 { background-color: rgba(249, 115, 22, 0.18); }
+.app-dark .bg-green-50 { background-color: rgba(34, 197, 94, 0.12); }
