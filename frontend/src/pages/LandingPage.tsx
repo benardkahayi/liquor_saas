@@ -207,7 +207,9 @@ export function LandingPage() {
                     recommended ? "bg-[#0F6B47] text-white hover:bg-[#0B5639]" : "border border-[#CBD6D0] hover:bg-[#F4F8F5]"
                   }`}
                 >
-                  {t("home.cta.start", "Start free")}
+                  {price === 0
+                    ? t("home.cta.start", "Start free")
+                    : t("landing.pricing.choose", "Choose {plan}").replace("{plan}", plan.charAt(0) + plan.slice(1).toLowerCase())}
                 </Link>
               </div>
             ))}

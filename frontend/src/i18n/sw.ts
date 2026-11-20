@@ -291,6 +291,7 @@ export const sw: Record<string, string> = {
   "landing.pricing.subtitle": "Anza bure. Panda daraja pale biashara yako inapohitaji nafasi zaidi.",
   "landing.pricing.recommended": "Inapendekezwa",
   "landing.pricing.month": "mwezi",
+  "landing.pricing.choose": "Chagua {plan}",
   "landing.pricing.staffAccounts": "Hadi akaunti {n} za wafanyakazi",
   "landing.pricing.products": "Hadi bidhaa {n}",
   "landing.pricing.productsUnlimited": "Bidhaa bila kikomo",
