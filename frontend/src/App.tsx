@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { CreditCard, Layers, Wallet, Users, BarChart2, LifeBuoy, Settings } from "lucide-react";
+import { Layers, Wallet, BarChart2, LifeBuoy, Settings } from "lucide-react";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { TenantProvider } from "./context/TenantContext";
 import { LanguageProvider, useLanguage } from "./context/LanguageContext";
@@ -9,6 +9,8 @@ import { RequireTenant } from "./components/RequireTenant";
 import { Layout } from "./components/Layout";
 import { LandingPage } from "./pages/LandingPage";
 import { LoginPage } from "./pages/LoginPage";
+import { SuperAdminSubscriptionsPage } from "./pages/superadmin/SuperAdminSubscriptionsPage";
+import { SuperAdminUsersPage } from "./pages/superadmin/SuperAdminUsersPage";
 import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
 import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 import { RegisterPage } from "./pages/RegisterPage";
@@ -109,16 +111,7 @@ function AppRoutes() {
         />
         <Route
           path="/super-admin/subscriptions"
-          element={withSuperAdminLayout(
-            <ComingSoonPage
-              title={t("superadmin.subscriptions.title", "Subscriptions")}
-              description={t(
-                "superadmin.subscriptions.description",
-                "A dedicated subscriptions management view is on the way. For now, plan and status per business are visible from Businesses."
-              )}
-              icon={CreditCard}
-            />
-          )}
+          element={withSuperAdminLayout(<SuperAdminSubscriptionsPage />)}
         />
         <Route
           path="/super-admin/plans"
@@ -148,16 +141,7 @@ function AppRoutes() {
         />
         <Route
           path="/super-admin/users"
-          element={withSuperAdminLayout(
-            <ComingSoonPage
-              title={t("superadmin.users.title", "Users")}
-              description={t(
-                "superadmin.users.description",
-                "A cross-tenant user directory is on the way."
-              )}
-              icon={Users}
-            />
-          )}
+          element={withSuperAdminLayout(<SuperAdminUsersPage />)}
         />
         <Route
           path="/super-admin/analytics"

@@ -6,7 +6,6 @@ import { money } from "../../lib/money";
 import { calculateGrowth, countInRange, formatGrowthLabel } from "../../lib/growth";
 import { useLanguage } from "../../context/LanguageContext";
 import {
-  MOCK_PLAN_PRICES,
   getMockRevenueTrend,
   getMockRecentPayments,
   getMockActivity,
@@ -26,6 +25,8 @@ interface PlatformStats {
   activeTenants: number;
   totalUsers: number;
   platformRevenue: number | string;
+  monthlyIncomeTzs?: number;
+  payingBusinesses?: number;
 }
 
 interface TenantRow {
@@ -89,10 +90,8 @@ export function SuperAdminDashboardPage() {
       return daysLeft >= 0 && daysLeft <= 7;
     });
 
-    const estimatedMRR = tenants.reduce(
-      (sum, t) => sum + (MOCK_PLAN_PRICES[t.subscription?.plan ?? "FREE"] ?? 0),
-      0
-    );
+    // Real figure from the server: plans that are paid up, at their prices.
+    const estimatedMRR = stats?.monthlyIncomeTzs ?? 0;
 
     const industryCounts = new Map<string, number>();
     for (const t of tenants) {
@@ -115,7 +114,7 @@ export function SuperAdminDashboardPage() {
       industryDistribution: Array.from(industryCounts, ([label, count]) => ({ label, count })),
       recent,
     };
-  }, [tenants, range]);
+  }, [tenants, range, stats]);
 
   const revenueTrend = useMemo(() => {
     if (!analysis) return [];

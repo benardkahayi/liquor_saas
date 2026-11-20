@@ -24,6 +24,11 @@ export async function setPlan(tenantId: string, plan: PlanName) {
   }
 
   const limits = PLAN_LIMITS[plan];
+  // Paying again for the same plan before it runs out adds 30 days on top
+  // of what's left, so an early payment isn't lost.
+  const stillPaid =
+    existing.plan === plan && existing.currentPeriodEnd && existing.currentPeriodEnd.getTime() > Date.now();
+  const renewFrom = stillPaid ? existing.currentPeriodEnd!.getTime() : Date.now();
   return db.subscription.update({
     where: { tenantId },
     data: {
@@ -31,7 +36,7 @@ export async function setPlan(tenantId: string, plan: PlanName) {
       status: "ACTIVE",
       seatLimit: limits.seatLimit,
       productLimit: limits.productLimit,
-      currentPeriodEnd: plan === "FREE" ? null : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      currentPeriodEnd: plan === "FREE" ? null : new Date(renewFrom + 30 * 24 * 60 * 60 * 1000),
     },
   });
 }
