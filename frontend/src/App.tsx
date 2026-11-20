@@ -9,6 +9,8 @@ import { RequireTenant } from "./components/RequireTenant";
 import { Layout } from "./components/Layout";
 import { LandingPage } from "./pages/LandingPage";
 import { LoginPage } from "./pages/LoginPage";
+import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
+import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { HomeDashboard } from "./pages/HomeDashboard";
 import { ProductsPage } from "./pages/ProductsPage";
@@ -70,6 +72,8 @@ function AppRoutes() {
     <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/register" element={<RegisterPage />} />
 
         <Route path="/dashboard" element={withLayout(<HomeDashboard />)} />

@@ -123,6 +123,8 @@ model User {
   fullName     String
   isSuperAdmin Boolean  @default(false)
   isActive     Boolean  @default(true)
+  // Set when the password is reset; logins made before this stop working.
+  passwordChangedAt DateTime?
 
   roleId       String?
   role         Role?    @relation(fields: [roleId], references: [id])
@@ -133,9 +135,25 @@ model User {
   sales        Sale[]
   auditLogs    AuditLog[]
   orders       Order[]
+  passwordResetTokens PasswordResetToken[]
 
   @@index([tenantId])
   @@map("users")
+}
+
+// One "forgot password" link. Only a hash of the secret is stored, so a
+// leaked database can't be used to reset anyone's password.
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@map("password_reset_tokens")
 }
 
 // A named role WITHIN a tenant (e.g. "Owner", "Cashier"). Tenants can

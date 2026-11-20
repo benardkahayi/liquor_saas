@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
-import { registerSchema, loginSchema, refreshSchema } from "./auth.validation";
+import { registerSchema, loginSchema, refreshSchema, forgotPasswordSchema, resetPasswordSchema } from "./auth.validation";
+import { requestPasswordReset, resetPassword } from "./passwordReset.service";
 import { registerTenant, login, refreshAccessToken } from "./auth.service";
 import { setAuthCookies, setAccessCookie, clearAuthCookies, REFRESH_COOKIE } from "@/common/utils/authCookies";
 
@@ -55,4 +56,29 @@ export async function refreshHandler(req: Request, res: Response, next: NextFunc
 export function logoutHandler(_req: Request, res: Response) {
   clearAuthCookies(res);
   res.status(204).send();
+}
+
+
+export async function forgotPasswordHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { email } = forgotPasswordSchema.parse(req.body);
+    await requestPasswordReset(email);
+    // Same answer either way — see requestPasswordReset.
+    res.status(200).json({
+      data: { message: "If an account uses that email, we've sent a link to reset the password." },
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function resetPasswordHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { token, password } = resetPasswordSchema.parse(req.body);
+    await resetPassword(token, password);
+    clearAuthCookies(res);
+    res.status(200).json({ data: { message: "Password changed. You can now sign in." } });
+  } catch (err) {
+    next(err);
+  }
 }

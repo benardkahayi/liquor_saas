@@ -96,6 +96,12 @@ export function LoginPage() {
           onChange={setPassword}
           placeholder="••••••••"
         />
+        <Link
+          to="/forgot-password"
+          className="-mt-2 self-end text-sm font-medium text-blue-400 hover:text-blue-300"
+        >
+          {t("login.forgot", "Forgot password?")}
+        </Link>
 
         <button
           type="submit"

@@ -5,6 +5,8 @@ import { api } from "./api/client";
 import { useAuth } from "./context/AuthContext";
 import { useTenant } from "./context/TenantContext";
 import { LoginPage } from "./pages/LoginPage";
+import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
+import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { TenantErrorPage } from "./pages/TenantErrorPage";
 import { goToBase } from "./lib/tenantHost";
@@ -84,6 +86,8 @@ export function TenantSubdomainApp({ slug }: { slug: string }) {
     return (
       <Routes>
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="*" element={<LoginPage />} />
       </Routes>
     );

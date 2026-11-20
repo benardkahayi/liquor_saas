@@ -194,6 +194,12 @@ export async function refreshAccessToken(refreshToken: string) {
     throw new NotFoundError("User no longer exists");
   }
 
+  // A password reset logs out every device that signed in before it.
+  const issuedAtMs = ((payload as { iat?: number }).iat ?? 0) * 1000;
+  if (user.passwordChangedAt && issuedAtMs < user.passwordChangedAt.getTime() - 1000) {
+    throw new UnauthorizedError("Your password was changed. Please sign in again.");
+  }
+
   const accessToken = signAccessToken({
     userId: user.id,
     tenantId: user.tenantId,

@@ -27,3 +27,12 @@ export const loginSchema = z.object({
 export const refreshSchema = z.object({
   refreshToken: z.string().min(1).optional(),
 });
+
+export const forgotPasswordSchema = z.object({
+  email: z.string().trim().email("Must be a valid email"),
+});
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(20, "This reset link is incomplete"),
+  password: z.string().min(8, "Password must be at least 8 characters").max(200),
+});
