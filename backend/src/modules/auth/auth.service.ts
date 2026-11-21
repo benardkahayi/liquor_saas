@@ -155,6 +155,12 @@ export async function registerTenant(input: RegisterInput) {
   };
 }
 
+// Made once at startup, with the same cost as real passwords.
+const dummy: Promise<string> = hashPassword("not-a-real-password-" + Math.random());
+function dummyHash() {
+  return dummy;
+}
+
 interface LoginInput {
   email: string;
   password: string;
@@ -166,12 +172,10 @@ export async function login(input: LoginInput) {
     include: { tenant: { select: { slug: true } } },
   });
 
-  if (!user || !user.isActive) {
-    throw new UnauthorizedError("Invalid email or password");
-  }
-
-  const passwordValid = await verifyPassword(input.password, user.passwordHash);
-  if (!passwordValid) {
+  // Check a password even when there's no such account, so a wrong email
+  // takes as long as a wrong password and can't reveal who is registered.
+  const passwordValid = await verifyPassword(input.password, user?.passwordHash ?? (await dummyHash()));
+  if (!user || !user.isActive || !passwordValid) {
     throw new UnauthorizedError("Invalid email or password");
   }
 

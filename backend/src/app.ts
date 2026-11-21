@@ -1,6 +1,8 @@
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import helmet from "helmet";
+import { apiLimit } from "@/middleware/rateLimits";
 import authRoutes from "@/modules/auth/auth.routes";
 import usersRoutes from "@/modules/users/users.routes";
 import productsRoutes from "@/modules/products/products.routes";
@@ -21,6 +23,18 @@ import { buildCorsOriginValidator } from "@/config/cors";
 
 export function createApp() {
   const app = express();
+  app.disable("x-powered-by");
+
+  // Security headers. This server only returns JSON and images, so the
+  // strictest settings are fine; the website's own headers are in
+  // frontend/vercel.json. Images must stay loadable from the website, so
+  // cross-origin resource loading is allowed.
+  app.use(
+    helmet({
+      contentSecurityPolicy: { directives: { defaultSrc: ["'none'"], frameAncestors: ["'none'"] } },
+      crossOriginResourcePolicy: { policy: "cross-origin" },
+    })
+  );
 
   app.use(cors({ origin: buildCorsOriginValidator(), credentials: true }));
   // 1 MB leaves room for a resized menu photo (sent as base64) — the
@@ -29,6 +43,7 @@ export function createApp() {
   app.use(cookieParser());
 
   app.get("/health", (_req, res) => res.json({ status: "ok" }));
+  app.use("/api", apiLimit);
 
   // Runs before auth so an unauthenticated visitor to a dead/suspended
   // tenant subdomain still gets a clean "business not found"/"suspended"

@@ -3,7 +3,11 @@ import { BUSINESS_TYPES } from "@/common/constants/businessTypes";
 
 export const updateTenantSettingsSchema = z.object({
   businessName: z.string().min(2).max(100).optional(),
-  logoUrl: z.string().url().optional(),
+  logoUrl: z
+    .string()
+    .url()
+    .refine((u) => u.startsWith("https://"), "Logo link must start with https://")
+    .optional(),
   phone: z.string().optional(),
   address: z.string().max(200).optional(),
   currency: z.string().length(3, "Use a 3-letter currency code, e.g. USD").optional(),

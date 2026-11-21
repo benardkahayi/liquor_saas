@@ -53,6 +53,41 @@ export async function sendEmail(email: Email): Promise<void> {
 
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    throw new Error(`Brevo refused the email (${res.status}): ${body.slice(0, 300)}`);
+    throw new EmailError(res.status, body.slice(0, 300));
   }
+}
+
+// Brevo's refusal, with a plain explanation of the usual fix.
+export class EmailError extends Error {
+  constructor(public status: number, public providerMessage: string) {
+    super(`Brevo refused the email (${status}): ${providerMessage}`);
+  }
+
+  get advice(): string {
+    const m = this.providerMessage.toLowerCase();
+    if (/\bip address\b|authori[sz]ed_?ips|unrecognised ip|unrecognized ip/.test(m)) {
+      return "Brevo is blocking the server's IP address. In Brevo go to Settings → Security → Authorised IPs and turn off blocking of unknown IP addresses (Render's IPs change).";
+    }
+    if (m.includes("sender")) {
+      return "The sender address isn't verified. In Brevo go to Senders, Domains & Dedicated IPs → Senders, add MAIL_FROM_EMAIL and click the link Brevo emails you.";
+    }
+    if (m.includes("not yet activated") || m.includes("not activated") || m.includes("permission_denied")) {
+      return "Your Brevo account can't send yet. Finish activating it (Brevo may ask for your details or approve the account), then try again.";
+    }
+    if (this.status === 401 || m.includes("key")) {
+      return "The API key is wrong or deleted. Create a new one in Brevo → Settings → SMTP & API → API Keys and paste it into BREVO_API_KEY on Render.";
+    }
+    return "Check the message above, or Brevo → Transactional → Logs.";
+  }
+}
+
+// What the platform admin sees on the email check.
+export function emailSetup() {
+  return {
+    configured: isEmailConfigured(),
+    hasApiKey: Boolean(process.env.BREVO_API_KEY),
+    from: process.env.MAIL_FROM_EMAIL || null,
+    fromName: process.env.MAIL_FROM_NAME || "AB BusinessHub",
+    appUrl: process.env.APP_URL || null,
+  };
 }

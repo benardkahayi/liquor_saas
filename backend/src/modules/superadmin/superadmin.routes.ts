@@ -13,6 +13,8 @@ import {
   listPaymentsHandler,
   paymentsOverviewHandler,
   activityHandler,
+  emailStatusHandler,
+  emailTestHandler,
 } from "./superadmin.controller";
 
 const router = Router();
@@ -30,5 +32,7 @@ router.put("/users/:id/status", updateUserStatusHandler);
 router.get("/payments", listPaymentsHandler);
 router.get("/payments/overview", paymentsOverviewHandler);
 router.get("/activity", activityHandler);
+router.get("/email", emailStatusHandler);
+router.post("/email/test", emailTestHandler);
 
 export default router;

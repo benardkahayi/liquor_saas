@@ -53,7 +53,10 @@ export async function requestPasswordReset(rawEmail: string): Promise<void> {
     where: { email: { equals: email, mode: "insensitive" }, isActive: true },
     select: { id: true, email: true, fullName: true },
   });
-  if (!user) return;
+  if (!user) {
+    console.info("[password reset] asked for an email with no active account — nothing sent");
+    return;
+  }
 
   // Don't let the form be used to flood someone's inbox.
   const hourAgo = new Date(Date.now() - 60 * 60 * 1000);
@@ -62,8 +65,14 @@ export async function requestPasswordReset(rawEmail: string): Promise<void> {
     orderBy: { createdAt: "desc" },
     select: { createdAt: true },
   });
-  if (recent.length >= MAX_EMAILS_PER_HOUR) return;
-  if (recent[0] && Date.now() - recent[0].createdAt.getTime() < MIN_SECONDS_BETWEEN_EMAILS * 1000) return;
+  if (recent.length >= MAX_EMAILS_PER_HOUR) {
+    console.info("[password reset] limit reached (5 an hour) — nothing sent");
+    return;
+  }
+  if (recent[0] && Date.now() - recent[0].createdAt.getTime() < MIN_SECONDS_BETWEEN_EMAILS * 1000) {
+    console.info("[password reset] asked again within a minute — nothing sent");
+    return;
+  }
 
   const token = crypto.randomBytes(32).toString("base64url");
   await db.$transaction([
@@ -83,13 +92,12 @@ export async function requestPasswordReset(rawEmail: string): Promise<void> {
 
   const link = `${appUrl()}/reset-password?token=${encodeURIComponent(token)}`;
   const { subject, text, html } = resetEmail(user.fullName, link);
-  try {
-    await sendEmail({ to: user.email, toName: user.fullName, subject, text, html });
-  } catch (err) {
-    // Logged for you to see in Render; the person still gets the normal
-    // "check your email" answer.
-    console.error("[password reset] email failed:", err);
-  }
+  // Sent in the background: waiting for Brevo would make answers for real
+  // accounts slower than for unknown emails, which would give away who is
+  // registered. Failures are logged for you to see in Render.
+  void sendEmail({ to: user.email, toName: user.fullName, subject, text, html })
+    .then(() => console.info("[password reset] email handed to Brevo"))
+    .catch((err) => console.error("[password reset] email failed:", err));
 }
 
 export async function resetPassword(token: string, newPassword: string): Promise<void> {

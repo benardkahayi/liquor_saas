@@ -17,6 +17,16 @@ interface CreateProductInput {
   supplierId?: string;
 }
 
+// A product may only point at this business's own category and supplier.
+async function checkLinks(tenantId: string, input: { categoryId?: string | null; supplierId?: string | null }) {
+  const [category, supplier] = await Promise.all([
+    input.categoryId ? db.category.findFirst({ where: { id: input.categoryId, tenantId }, select: { id: true } }) : true,
+    input.supplierId ? db.supplier.findFirst({ where: { id: input.supplierId, tenantId }, select: { id: true } }) : true,
+  ]);
+  if (!category) throw new NotFoundError("Category not found");
+  if (!supplier) throw new NotFoundError("Supplier not found");
+}
+
 export async function createProduct(tenantId: string, input: CreateProductInput) {
   const limitCheck = await checkProductLimit(tenantId);
   if (limitCheck.limitReached) {
@@ -24,6 +34,8 @@ export async function createProduct(tenantId: string, input: CreateProductInput)
       `You've reached your ${limitCheck.plan} plan's limit of ${limitCheck.limit} products. Upgrade your plan to add more.`
     );
   }
+
+  await checkLinks(tenantId, input);
 
   if (input.sku) {
     const existing = await db.product.findFirst({
@@ -105,6 +117,7 @@ export async function updateProduct(
   input: Partial<CreateProductInput>
 ) {
   await getProductById(tenantId, productId);
+  await checkLinks(tenantId, input);
 
   return db.product.update({
     where: { id: productId },

@@ -10,6 +10,8 @@ import {
   paymentsOverviewQuerySchema,
 } from "./superadmin.validation";
 import * as superAdminService from "./superadmin.service";
+import { db } from "@/config/db";
+import { EmailError, emailSetup, sendEmail } from "@/common/utils/mailer";
 
 export async function listTenantsHandler(req: Request, res: Response, next: NextFunction) {
   try {
@@ -117,6 +119,58 @@ export async function paymentsOverviewHandler(req: Request, res: Response, next:
 export async function activityHandler(_req: Request, res: Response, next: NextFunction) {
   try {
     res.status(200).json({ data: await superAdminService.getActivity(10) });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export function emailStatusHandler(_req: Request, res: Response) {
+  res.status(200).json({ data: emailSetup() });
+}
+
+// Sends a test email to the signed-in platform admin and reports exactly
+// what Brevo answered, so email problems can be fixed without reading logs.
+export async function emailTestHandler(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const me = await db.user.findUnique({ where: { id: req.user!.userId }, select: { email: true, fullName: true } });
+    const setup = emailSetup();
+    if (!me) {
+      res.status(404).json({ error: { code: "NOT_FOUND", message: "Account not found" } });
+      return;
+    }
+    if (!setup.configured) {
+      res.status(200).json({
+        data: {
+          ok: false,
+          to: me.email,
+          ...setup,
+          problem: "Email isn't set up on the server.",
+          advice: "On Render → bizsmart-api → Environment, add BREVO_API_KEY and MAIL_FROM_EMAIL, save, and wait for the redeploy.",
+        },
+      });
+      return;
+    }
+    try {
+      await sendEmail({
+        to: me.email,
+        toName: me.fullName,
+        subject: "AB BusinessHub test email",
+        text: "This is a test from AB BusinessHub. If you can read this, password reset emails will arrive too.",
+        html: "<p>This is a test from AB BusinessHub.</p><p>If you can read this, password reset emails will arrive too.</p>",
+      });
+      res.status(200).json({ data: { ok: true, to: me.email, ...setup } });
+    } catch (err) {
+      const e = err instanceof EmailError ? err : null;
+      res.status(200).json({
+        data: {
+          ok: false,
+          to: me.email,
+          ...setup,
+          problem: e ? `Brevo said (${e.status}): ${e.providerMessage}` : `Couldn't reach Brevo: ${(err as Error).message}`,
+          advice: e ? e.advice : "The server couldn't connect to Brevo. Try again in a minute.",
+        },
+      });
+    }
   } catch (err) {
     next(err);
   }

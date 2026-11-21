@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { Layers, BarChart2, LifeBuoy, Settings } from "lucide-react";
+import { Layers, BarChart2, LifeBuoy } from "lucide-react";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { TenantProvider } from "./context/TenantContext";
 import { LanguageProvider, useLanguage } from "./context/LanguageContext";
@@ -12,6 +12,7 @@ import { LoginPage } from "./pages/LoginPage";
 import { SuperAdminSubscriptionsPage } from "./pages/superadmin/SuperAdminSubscriptionsPage";
 import { SuperAdminUsersPage } from "./pages/superadmin/SuperAdminUsersPage";
 import { SuperAdminPaymentsPage } from "./pages/superadmin/SuperAdminPaymentsPage";
+import { SuperAdminSettingsPage } from "./pages/superadmin/SuperAdminSettingsPage";
 import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
 import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 import { RegisterPage } from "./pages/RegisterPage";
@@ -160,16 +161,7 @@ function AppRoutes() {
         />
         <Route
           path="/super-admin/settings"
-          element={withSuperAdminLayout(
-            <ComingSoonPage
-              title={t("superadmin.settings.title", "Settings")}
-              description={t(
-                "superadmin.settings.description",
-                "Platform-wide settings are on the way."
-              )}
-              icon={Settings}
-            />
-          )}
+          element={withSuperAdminLayout(<SuperAdminSettingsPage />)}
         />
 
         <Route path="*" element={<DefaultRedirect />} />
