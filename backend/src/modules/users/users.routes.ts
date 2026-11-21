@@ -1,11 +1,11 @@
 import { Router } from "express";
 import { requireAuth } from "@/middleware/auth";
-import { resolveTenant } from "@/middleware/tenant";
+import { resolveTenantOrPlatformAdmin } from "@/middleware/tenant";
 import { db } from "@/config/db";
 
 const router = Router();
 
-router.get("/me", requireAuth, resolveTenant, async (req, res, next) => {
+router.get("/me", requireAuth, resolveTenantOrPlatformAdmin, async (req, res, next) => {
   try {
     const user = await db.user.findUnique({
       where: { id: req.user!.userId },

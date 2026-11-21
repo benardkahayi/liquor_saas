@@ -50,40 +50,40 @@ export function ResetPasswordPage() {
       title={t("reset.title", "Choose a new password")}
       subtitle={t("reset.subtitle", "You'll use it the next time you sign in")}
       footer={
-        <Link to="/login" className="text-blue-400 hover:text-blue-300 font-medium">
+        <Link to="/login" className="font-semibold text-[#0F6B47] hover:text-[#0B5639]">
           {t("forgot.backToLogin", "Back to sign in")}
         </Link>
       }
     >
       {done ? (
         <div className="flex flex-col items-center gap-3 text-center">
-          <CheckCircle2 size={36} className="text-emerald-400" />
-          <p className="text-sm font-semibold text-white">{t("reset.doneTitle", "Password changed")}</p>
-          <p className="text-sm text-slate-400">
+          <CheckCircle2 size={36} className="text-[#0F6B47]" />
+          <p className="text-base font-semibold text-[#12352B]">{t("reset.doneTitle", "Password changed")}</p>
+          <p className="text-sm text-[#4A5652]">
             {t("reset.doneBody", "For your safety, you've been signed out on other phones and computers.")}
           </p>
           <Link
             to="/login"
-            className="mt-2 w-full rounded-xl bg-blue-600 py-2.5 text-center text-sm font-semibold text-white hover:bg-blue-500"
+            className="mt-2 w-full rounded-xl bg-[#0F6B47] py-3 text-center text-[15px] font-semibold text-white hover:bg-[#0B5639]"
           >
             {t("reset.signIn", "Sign in")}
           </Link>
         </div>
       ) : missingToken ? (
         <div className="flex flex-col gap-4 text-center">
-          <p className="text-sm text-slate-300">
+          <p className="text-sm text-[#3B4642]">
             {t("reset.noToken", "This reset link is incomplete. Open the link from your email again, or ask for a new one.")}
           </p>
           <Link
             to="/forgot-password"
-            className="w-full rounded-xl bg-blue-600 py-2.5 text-sm font-semibold text-white hover:bg-blue-500"
+            className="w-full rounded-xl bg-[#0F6B47] py-3 text-[15px] font-semibold text-white hover:bg-[#0B5639]"
           >
             {t("reset.askAgain", "Ask for a new link")}
           </Link>
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <ErrorBanner variant="dark" message={error} />
+          <ErrorBanner message={error} />
           <AuthInput
             label={t("reset.new", "New password")}
             isPassword
@@ -91,7 +91,6 @@ export function ResetPasswordPage() {
             minLength={8}
             value={password}
             onChange={setPassword}
-            placeholder="••••••••"
           />
           <AuthInput
             label={t("reset.confirm", "Type it again")}
@@ -100,18 +99,17 @@ export function ResetPasswordPage() {
             minLength={8}
             value={confirm}
             onChange={setConfirm}
-            placeholder="••••••••"
           />
-          <p className="-mt-2 text-xs text-slate-500">{t("reset.hint", "At least 8 characters")}</p>
+          <p className="-mt-2 text-xs text-[#6B7772]">{t("reset.hint", "At least 8 characters")}</p>
           <button
             type="submit"
             disabled={isSubmitting}
-            className="mt-1 w-full rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-60 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition-all hover:scale-[1.02] active:scale-100"
+            className="mt-1 w-full rounded-xl bg-[#0F6B47] py-3 text-[15px] font-semibold text-white transition-colors hover:bg-[#0B5639] disabled:opacity-60"
           >
             {isSubmitting ? t("reset.saving", "Saving…") : t("reset.submit", "Save new password")}
           </button>
           {error && (
-            <Link to="/forgot-password" className="text-center text-sm font-medium text-blue-400 hover:text-blue-300">
+            <Link to="/forgot-password" className="text-center text-sm font-semibold text-[#0F6B47] hover:text-[#0B5639]">
               {t("reset.askAgain", "Ask for a new link")}
             </Link>
           )}

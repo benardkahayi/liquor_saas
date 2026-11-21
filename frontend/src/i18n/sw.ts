@@ -49,6 +49,7 @@ export const sw: Record<string, string> = {
   "login.error.invalid": "Barua pepe au nenosiri sio sahihi",
   "login.error.network": "Haiwezi kufikia seva. Angalia mtandao wako kisha ujaribu tena.",
   "login.error.wrongBusiness": "Akaunti hii haina ruhusa ya kufikia biashara hii.",
+  "auth.backHome": "Rudi mwanzo",
   "login.forgot": "Umesahau nenosiri?",
   "forgot.title": "Umesahau nenosiri?",
   "forgot.subtitle": "Tutakutumia kiungo kwa barua pepe kuchagua jipya",

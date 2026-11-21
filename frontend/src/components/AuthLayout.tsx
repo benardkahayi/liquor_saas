@@ -1,5 +1,8 @@
 import type { ReactNode } from "react";
+import { ArrowLeft } from "lucide-react";
 import { LanguageSwitcher } from "./LanguageSwitcher";
+import { useLanguage } from "../context/LanguageContext";
+import { buildBaseOrigin } from "../lib/tenantHost";
 
 interface AuthLayoutProps {
   eyebrow: string;
@@ -9,38 +12,50 @@ interface AuthLayoutProps {
   footer: ReactNode;
 }
 
-export function AuthLayout({ eyebrow, title, subtitle, children, footer }: AuthLayoutProps) {
+// Sign-in, register and password pages. Same colours and fonts as the home
+// page (LandingPage.tsx), so moving between them feels like one product.
+export function AuthLayout({ title, subtitle, children, footer }: AuthLayoutProps) {
+  const { t } = useLanguage();
+  // The home page lives on the main address (not on a business subdomain).
+  const home = `${buildBaseOrigin()}/`;
+
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-10 relative overflow-hidden bg-slate-950">
-      <div
-        className="absolute inset-0"
-        style={{
-          background:
-            "radial-gradient(circle at 20% 20%, rgba(37,99,235,0.25), transparent 45%), radial-gradient(circle at 80% 70%, rgba(245,158,11,0.15), transparent 45%), linear-gradient(180deg, #0f172a 0%, #020617 100%)",
-        }}
-      />
-
-      <div className="w-full max-w-sm relative">
-        <div className="flex justify-center mb-4">
-          <LanguageSwitcher dark />
-        </div>
-        <div className="flex flex-col items-center mb-8">
-          <div className="w-14 h-14 rounded-2xl bg-blue-600 flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-blue-600/30 mb-3">
-            LS
+    <div className="home min-h-screen bg-[#F4F8F5] text-[#1C2421]">
+      <header className="border-b border-[#E4EAE6] bg-white">
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-5 py-3">
+          <a href={home} className="flex items-center gap-2.5" aria-label="AB BusinessHub home">
+            <span className="home-display flex h-8 w-8 items-center justify-center rounded-lg bg-[#0F6B47] text-sm font-extrabold text-white">
+              AB
+            </span>
+            <span className="home-display hidden text-lg font-bold sm:inline">AB BusinessHub</span>
+          </a>
+          <div className="flex items-center gap-3">
+            <a
+              href={home}
+              className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-medium text-[#4A5652] hover:bg-[#EDF6F1] hover:text-[#0F6B47]"
+            >
+              <ArrowLeft size={16} />
+              {t("auth.backHome", "Back to home")}
+            </a>
+            <LanguageSwitcher />
           </div>
-          <p className="text-blue-400 text-xs font-semibold tracking-widest uppercase">
-            {eyebrow}
-          </p>
-          <h1 className="text-white text-2xl font-bold mt-2">{title}</h1>
-          <p className="text-slate-400 text-sm mt-1">{subtitle}</p>
         </div>
+      </header>
 
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-sm">
-          {children}
+      <main className="flex justify-center px-4 py-10 sm:py-14">
+        <div className="w-full max-w-sm">
+          <div className="mb-6 text-center">
+            <h1 className="home-display text-[1.75rem] font-bold leading-tight text-[#12352B]">{title}</h1>
+            <p className="mt-1.5 text-[15px] text-[#4A5652]">{subtitle}</p>
+          </div>
+
+          <div className="rounded-2xl border border-[#DDE5E0] bg-white p-6 shadow-[0_12px_30px_-18px_rgba(18,53,43,0.35)]">
+            {children}
+          </div>
+
+          <p className="mt-6 text-center text-sm text-[#6B7772]">{footer}</p>
         </div>
-
-        <p className="text-center text-sm text-slate-500 mt-6">{footer}</p>
-      </div>
+      </main>
     </div>
   );
 }

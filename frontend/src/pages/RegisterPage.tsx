@@ -68,17 +68,17 @@ export function RegisterPage() {
       footer={
         <>
           {t("register.haveAccount", "Already have an account?")}{" "}
-          <Link to="/login" className="text-blue-400 hover:text-blue-300 font-medium">
+          <Link to="/login" className="font-semibold text-[#0F6B47] hover:text-[#0B5639]">
             {t("register.signIn", "Sign in")}
           </Link>
         </>
       }
     >
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <ErrorBanner variant="dark" message={error} />
+        <ErrorBanner message={error} />
 
         <div>
-          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-400">
+          <p className="mb-2 text-sm font-medium text-[#3B4642]">
             {t("register.businessType", "What kind of business?")}
           </p>
           <div className="grid grid-cols-2 gap-2">
@@ -89,8 +89,8 @@ export function RegisterPage() {
                 onClick={() => setIndustry(bt.value)}
                 className={`rounded-lg border px-3 py-2 text-left text-sm transition-colors ${
                   industry === bt.value
-                    ? "border-blue-500 bg-blue-500/15 text-white"
-                    : "border-slate-700 bg-slate-800/50 text-slate-300 hover:border-slate-500"
+                    ? "border-[#0F6B47] bg-[#EDF6F1] font-semibold text-[#12352B]"
+                    : "border-[#D5DDD8] bg-white text-[#3B4642] hover:border-[#9CC4AE]"
                 }`}
               >
                 {t(bt.labelKey, bt.label)}
@@ -105,7 +105,6 @@ export function RegisterPage() {
           minLength={2}
           value={businessName}
           onChange={setBusinessName}
-          placeholder={industry === "restaurant" ? "Mama Ntilie Restaurant" : "Joe's Liquor Store"}
         />
         <AuthInput
           label={t("register.fullName", "Your Full Name")}
@@ -113,7 +112,6 @@ export function RegisterPage() {
           minLength={2}
           value={ownerFullName}
           onChange={setOwnerFullName}
-          placeholder="Jane Doe"
         />
         <AuthInput
           label={t("common.email", "Email")}
@@ -121,7 +119,6 @@ export function RegisterPage() {
           required
           value={ownerEmail}
           onChange={setOwnerEmail}
-          placeholder="you@example.com"
         />
 
         <div>
@@ -132,9 +129,8 @@ export function RegisterPage() {
             minLength={8}
             value={ownerPassword}
             onChange={setOwnerPassword}
-            placeholder="••••••••"
           />
-          <p className="text-xs text-slate-500 mt-1">{t("register.passwordHint", "At least 8 characters")}</p>
+          <p className="mt-1 text-xs text-[#6B7772]">{t("register.passwordHint", "At least 8 characters")}</p>
         </div>
 
         <AuthInput
@@ -143,13 +139,12 @@ export function RegisterPage() {
           required
           value={confirmPassword}
           onChange={setConfirmPassword}
-          placeholder="••••••••"
         />
 
         <button
           type="submit"
           disabled={isSubmitting}
-          className="mt-1 w-full rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-60 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition-all hover:scale-[1.02] active:scale-100"
+          className="mt-1 w-full rounded-xl bg-[#0F6B47] py-3 text-[15px] font-semibold text-white transition-colors hover:bg-[#0B5639] disabled:opacity-60"
         >
           {isSubmitting
             ? t("register.submitting", "Creating account…")

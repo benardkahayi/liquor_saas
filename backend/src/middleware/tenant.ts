@@ -7,6 +7,15 @@ export async function resolveTenant(req: Request, _res: Response, next: NextFunc
     return next(new UnauthorizedError());
   }
 
+  // A platform admin who belongs to a business may use its pages. One that
+  // doesn't (the normal case) is stopped here: business pages need a
+  // business, and running them without one would crash, or worse, read
+  // across every business.
+  if (req.user.isSuperAdmin && !req.user.tenantId) {
+    return next(
+      new ForbiddenError("This page is for businesses. Use the Super Admin pages to manage the platform.")
+    );
+  }
   if (req.user.isSuperAdmin) {
     return next();
   }
@@ -38,4 +47,14 @@ export async function resolveTenant(req: Request, _res: Response, next: NextFunc
   }
 
   next();
+}
+
+// For the few routes every signed-in account needs, platform admins
+// included (e.g. GET /users/me, which loads who is logged in). Business
+// staff still get the full checks above.
+export function resolveTenantOrPlatformAdmin(req: Request, res: Response, next: NextFunction) {
+  if (req.user?.isSuperAdmin) {
+    return next();
+  }
+  return resolveTenant(req, res, next);
 }

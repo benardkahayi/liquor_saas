@@ -71,14 +71,14 @@ export function LoginPage() {
       footer={
         <>
           {t("login.noAccount", "Don't have an account?")}{" "}
-          <Link to="/register" className="text-blue-400 hover:text-blue-300 font-medium">
+          <Link to="/register" className="font-semibold text-[#0F6B47] hover:text-[#0B5639]">
             {t("login.createOne", "Create one")}
           </Link>
         </>
       }
     >
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <ErrorBanner variant="dark" message={error} />
+        <ErrorBanner message={error} />
 
         <AuthInput
           label={t("common.email", "Email")}
@@ -86,7 +86,6 @@ export function LoginPage() {
           required
           value={email}
           onChange={setEmail}
-          placeholder="you@example.com"
         />
         <AuthInput
           label={t("common.password", "Password")}
@@ -94,11 +93,10 @@ export function LoginPage() {
           required
           value={password}
           onChange={setPassword}
-          placeholder="••••••••"
         />
         <Link
           to="/forgot-password"
-          className="-mt-2 self-end text-sm font-medium text-blue-400 hover:text-blue-300"
+          className="-mt-1 self-end text-sm font-semibold text-[#0F6B47] hover:text-[#0B5639]"
         >
           {t("login.forgot", "Forgot password?")}
         </Link>
@@ -106,7 +104,7 @@ export function LoginPage() {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="mt-1 w-full rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-60 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition-all hover:scale-[1.02] active:scale-100"
+          className="mt-1 w-full rounded-xl bg-[#0F6B47] py-3 text-[15px] font-semibold text-white transition-colors hover:bg-[#0B5639] disabled:opacity-60"
         >
           {isSubmitting ? t("login.submitting", "Signing in…") : t("login.submit", "Sign In")}
         </button>
