@@ -10,6 +10,9 @@ import {
   listSubscriptionsHandler,
   listUsersHandler,
   updateUserStatusHandler,
+  listPaymentsHandler,
+  paymentsOverviewHandler,
+  activityHandler,
 } from "./superadmin.controller";
 
 const router = Router();
@@ -24,5 +27,8 @@ router.put("/tenants/:id/plan", setTenantPlanHandler);
 router.get("/subscriptions", listSubscriptionsHandler);
 router.get("/users", listUsersHandler);
 router.put("/users/:id/status", updateUserStatusHandler);
+router.get("/payments", listPaymentsHandler);
+router.get("/payments/overview", paymentsOverviewHandler);
+router.get("/activity", activityHandler);
 
 export default router;

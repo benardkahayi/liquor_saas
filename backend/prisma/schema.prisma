@@ -30,6 +30,7 @@ model Tenant {
   users         User[]
   settings      TenantSettings?
   subscription  Subscription?
+  subscriptionPayments SubscriptionPayment[]
   products      Product[]
   categories    Category[]
   customers     Customer[]
@@ -105,6 +106,40 @@ enum SubscriptionStatus {
   ACTIVE
   PAST_DUE
   CANCELLED
+}
+
+// Money a business paid the platform for its plan. Recorded by the platform
+// admin when the payment arrives (M-Pesa, bank, ...). Later a payment
+// provider's webhook can write here too.
+model SubscriptionPayment {
+  id          String   @id @default(uuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  plan        SubscriptionPlan
+  amount      Int                               // whole TZS
+  method      SubscriptionPaymentMethod
+  reference   String?                           // M-Pesa / bank transaction ID
+  note        String?
+  paidAt      DateTime @default(now())
+  periodEnd   DateTime?                         // plan paid up to this date
+  recordedById String?                          // the admin who recorded it
+
+  createdAt   DateTime @default(now())
+
+  @@index([tenantId, paidAt])
+  @@index([paidAt])
+  @@map("subscription_payments")
+}
+
+enum SubscriptionPaymentMethod {
+  MPESA
+  MIXX_BY_YAS
+  AIRTEL_MONEY
+  HALOPESA
+  BANK
+  CASH
+  OTHER
 }
 
 // =========================================================================

@@ -5,12 +5,7 @@ import { api } from "../../api/client";
 import { money } from "../../lib/money";
 import { calculateGrowth, countInRange, formatGrowthLabel } from "../../lib/growth";
 import { useLanguage } from "../../context/LanguageContext";
-import {
-  getMockRevenueTrend,
-  getMockRecentPayments,
-  getMockActivity,
-  type ActivityTemplateKey,
-} from "../../lib/platformMockData";
+import { methodLabel, PLAN_LABEL, type SubscriptionPayment } from "../../lib/subscriptionPayments";
 import { MiniBarChart } from "../../components/charts/MiniBarChart";
 import { DistributionBars } from "../../components/charts/DistributionBars";
 import { ErrorBanner, extractErrorMessage } from "../../components/ErrorBanner";
@@ -18,7 +13,6 @@ import { ErrorBanner, extractErrorMessage } from "../../components/ErrorBanner";
 type DateRange = "7D" | "30D" | "3M" | "1Y";
 
 const RANGE_DAYS: Record<DateRange, number> = { "7D": 7, "30D": 30, "3M": 90, "1Y": 365 };
-const RANGE_BUCKETS: Record<DateRange, number> = { "7D": 7, "30D": 10, "3M": 6, "1Y": 12 };
 
 interface PlatformStats {
   totalTenants: number;
@@ -26,8 +20,22 @@ interface PlatformStats {
   totalUsers: number;
   platformRevenue: number | string;
   monthlyIncomeTzs?: number;
+  collectedThisMonthTzs?: number;
   payingBusinesses?: number;
 }
+
+interface PaymentsOverview {
+  range: DateRange;
+  total: number;
+  previousTotal: number;
+  points: { label: string; value: number }[];
+  recent: SubscriptionPayment[];
+}
+
+type ActivityEvent =
+  | { id: string; type: "registered"; tenantId: string; businessName: string; at: string }
+  | { id: string; type: "paymentReceived"; tenantId: string; businessName: string; at: string; amount: number; plan: string }
+  | { id: string; type: "userAdded"; tenantId: string; businessName: string; at: string; person: string };
 
 interface TenantRow {
   id: string;
@@ -40,32 +48,36 @@ interface TenantRow {
   users: { fullName: string; email: string }[];
 }
 
-const ACTIVITY_TEMPLATES: Record<ActivityTemplateKey, { key: string; en: string }> = {
-  registered: { key: "superadmin.activity.registered", en: "{n} registered as a new business" },
-  upgraded: { key: "superadmin.activity.upgraded", en: "{n} upgraded their subscription plan" },
-  paymentReceived: { key: "superadmin.activity.paymentReceived", en: "Payment received from {n}" },
-  userAdded: { key: "superadmin.activity.userAdded", en: "New user added to {n}" },
-  suspended: { key: "superadmin.activity.suspended", en: "{n} was suspended" },
-};
-
 export function SuperAdminDashboardPage() {
   const { t } = useLanguage();
   const [stats, setStats] = useState<PlatformStats | null>(null);
   const [tenants, setTenants] = useState<TenantRow[] | null>(null);
   const [range, setRange] = useState<DateRange>("30D");
+  const [overview, setOverview] = useState<PaymentsOverview | null>(null);
+  const [activity, setActivity] = useState<ActivityEvent[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([
       api.get("/superadmin/stats"),
       api.get("/superadmin/tenants", { params: { page: 1, pageSize: 100 } }),
+      api.get("/superadmin/activity"),
     ])
-      .then(([statsRes, tenantsRes]) => {
+      .then(([statsRes, tenantsRes, activityRes]) => {
         setStats(statsRes.data.data);
         setTenants(tenantsRes.data.items);
+        setActivity(activityRes.data.data);
       })
       .catch((err) => setError(extractErrorMessage(err, t("superadmin.dashboard.error.load", "Failed to load platform overview"))));
   }, [t]);
+
+  // Money received for the chosen period (reloads when the range changes).
+  useEffect(() => {
+    api
+      .get("/superadmin/payments/overview", { params: { range } })
+      .then((res) => setOverview(res.data.data))
+      .catch((err) => setError(extractErrorMessage(err, t("superadmin.dashboard.error.load", "Failed to load platform overview"))));
+  }, [range, t]);
 
   const analysis = useMemo(() => {
     if (!tenants) return null;
@@ -116,19 +128,7 @@ export function SuperAdminDashboardPage() {
     };
   }, [tenants, range, stats]);
 
-  const revenueTrend = useMemo(() => {
-    if (!analysis) return [];
-    return getMockRevenueTrend(analysis.estimatedMRR, RANGE_BUCKETS[range]);
-  }, [analysis, range]);
-
-  const mockPayments = useMemo(
-    () => getMockRecentPayments(tenants?.map((t) => t.name) ?? []),
-    [tenants]
-  );
-  const mockActivity = useMemo(
-    () => getMockActivity(tenants?.map((t) => t.name) ?? []),
-    [tenants]
-  );
+  const receivedGrowth = overview ? calculateGrowth(overview.total, overview.previousTotal) : undefined;
 
   const rangeLabels: Record<DateRange, string> = {
     "7D": t("superadmin.range.7d", "7D"),
@@ -181,9 +181,9 @@ export function SuperAdminDashboardPage() {
             />
             <KpiCard
               icon={TrendingUp}
-              label={t("superadmin.kpi.mrr", "Monthly Recurring Revenue")}
-              value={money(analysis.estimatedMRR)}
-              context={t("superadmin.estimated", "estimated — billing integration pending")}
+              label={t("superadmin.kpi.receivedMonth", "Received this month")}
+              value={money(stats.collectedThisMonthTzs ?? 0)}
+              context={`${t("superadmin.kpi.expected", "Expected each month")}: ${money(analysis.estimatedMRR)}`}
             />
             <KpiCard
               icon={Users}
@@ -196,11 +196,30 @@ export function SuperAdminDashboardPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
             <div className="lg:col-span-2 card p-5">
               <div className="flex items-baseline justify-between mb-1">
-                <h2 className="font-semibold text-gray-900">{t("superadmin.revenueOverview", "Revenue Overview")}</h2>
-                <span className="text-xs text-gray-400">{t("superadmin.estimated", "Estimated — billing integration pending")}</span>
+                <h2 className="font-semibold text-gray-900">{t("superadmin.moneyReceived", "Money received")}</h2>
+                <span className="text-xs text-gray-500">
+                  {t("superadmin.lastRange", "Last")} {rangeLabels[range]}
+                </span>
               </div>
-              <p className="text-2xl font-bold text-gray-900 mb-4">{money(analysis.estimatedMRR)}</p>
-              <MiniBarChart points={revenueTrend} />
+              <div className="flex items-baseline gap-2 mb-4">
+                <p className="text-2xl font-bold text-gray-900">{money(overview?.total ?? 0)}</p>
+                {receivedGrowth && (overview?.total || overview?.previousTotal) ? (
+                  <span
+                    className={`text-xs font-medium ${
+                      receivedGrowth.percent === null ? "text-blue-600" : receivedGrowth.percent >= 0 ? "text-green-600" : "text-red-600"
+                    }`}
+                  >
+                    {formatGrowthLabel(receivedGrowth, t("superadmin.kpi.new", "New"))}
+                  </span>
+                ) : null}
+              </div>
+              {overview && overview.total === 0 ? (
+                <p className="flex h-40 items-center justify-center rounded-lg bg-gray-50 px-6 text-center text-sm text-gray-500">
+                  {t("superadmin.noPaymentsRange", "No payments recorded in this period yet.")}
+                </p>
+              ) : (
+                <MiniBarChart points={overview?.points ?? []} />
+              )}
             </div>
 
             <div className="card p-5">
@@ -259,7 +278,7 @@ export function SuperAdminDashboardPage() {
             <div className="card p-5">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="font-semibold text-gray-900">{t("nav.subscriptions", "Subscriptions")}</h2>
-                <Link to="/super-admin/tenants" className="text-sm text-blue-600 hover:underline">
+                <Link to="/super-admin/subscriptions" className="text-sm text-blue-600 hover:underline">
                   {t("superadmin.viewAll", "View All")}
                 </Link>
               </div>
@@ -274,54 +293,73 @@ export function SuperAdminDashboardPage() {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <div className="lg:col-span-2 card overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-100">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
                 <h2 className="font-semibold text-gray-900">{t("superadmin.recentPayments", "Recent Payments")}</h2>
-                <p className="text-xs text-gray-400 mt-0.5">{t("superadmin.estimated", "Estimated — billing integration pending")}</p>
+                <Link to="/super-admin/payments" className="text-sm text-blue-600 hover:underline">
+                  {t("superadmin.viewAll", "View All")}
+                </Link>
               </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-50 text-gray-500 text-left uppercase text-xs tracking-wide">
-                    <tr>
-                      <th className="px-5 py-2 font-medium">{t("superadmin.col.business", "Business")}</th>
-                      <th className="px-5 py-2 font-medium">{t("superadmin.col.plan", "Plan")}</th>
-                      <th className="px-5 py-2 font-medium">{t("expenses.col.amount", "Amount")}</th>
-                      <th className="px-5 py-2 font-medium">{t("settings.status", "Status")}</th>
-                      <th className="px-5 py-2 font-medium">{t("expenses.col.date", "Date")}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {mockPayments.map((p) => (
-                      <tr key={p.id} className="border-t border-gray-100 hover:bg-gray-50 transition-colors">
-                        <td className="px-5 py-2.5 text-gray-900 font-medium whitespace-nowrap">{p.businessName}</td>
-                        <td className="px-5 py-2.5 text-gray-600">{p.plan}</td>
-                        <td className="px-5 py-2.5 text-gray-600">{money(p.amount)}</td>
-                        <td className="px-5 py-2.5">
-                          <PaymentStatusBadge status={p.status} />
-                        </td>
-                        <td className="px-5 py-2.5 text-gray-500 whitespace-nowrap">
-                          {new Date(p.date).toLocaleDateString()}
-                        </td>
+              {overview && overview.recent.length === 0 ? (
+                <p className="px-5 py-8 text-sm text-gray-500">
+                  {t(
+                    "superadmin.payments.empty",
+                    "No payments yet. When a business pays, record it from Subscriptions — it will show here."
+                  )}{" "}
+                  <Link to="/super-admin/subscriptions" className="text-blue-600 hover:underline">
+                    {t("nav.subscriptions", "Subscriptions")}
+                  </Link>
+                </p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50 text-gray-500 text-left uppercase text-xs tracking-wide">
+                      <tr>
+                        <th className="px-5 py-2 font-medium">{t("superadmin.col.business", "Business")}</th>
+                        <th className="px-5 py-2 font-medium">{t("superadmin.col.plan", "Plan")}</th>
+                        <th className="px-5 py-2 font-medium text-right">{t("expenses.col.amount", "Amount")}</th>
+                        <th className="px-5 py-2 font-medium">{t("superadmin.pay.method", "Paid with")}</th>
+                        <th className="px-5 py-2 font-medium">{t("expenses.col.date", "Date")}</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {(overview?.recent ?? []).map((p) => (
+                        <tr key={p.id} className="border-t border-gray-100 hover:bg-gray-50 transition-colors">
+                          <td className="px-5 py-2.5 text-gray-900 font-medium whitespace-nowrap">{p.tenant.name}</td>
+                          <td className="px-5 py-2.5 text-gray-600">{PLAN_LABEL[p.plan] ?? p.plan}</td>
+                          <td className="px-5 py-2.5 text-right tabular-nums text-gray-900 whitespace-nowrap">{money(p.amount)}</td>
+                          <td className="px-5 py-2.5 text-gray-600 whitespace-nowrap">{methodLabel(p.method)}</td>
+                          <td className="px-5 py-2.5 text-gray-500 whitespace-nowrap">{new Date(p.paidAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "Africa/Dar_es_Salaam" })}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
 
             <div className="card p-5">
               <h2 className="font-semibold text-gray-900 mb-4">{t("superadmin.platformActivity", "Platform Activity")}</h2>
-              <div className="space-y-4">
-                {mockActivity.map((a) => {
-                  const template = ACTIVITY_TEMPLATES[a.templateKey];
-                  const message = t(template.key, template.en).replace("{n}", a.businessName);
-                  return (
+              {activity && activity.length === 0 ? (
+                <p className="text-sm text-gray-500">{t("superadmin.activity.empty", "Nothing has happened yet.")}</p>
+              ) : (
+                <div className="space-y-4">
+                  {(activity ?? []).map((a) => (
                     <div key={a.id} className="text-sm">
-                      <p className="text-gray-700">{message}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">{timeAgo(a.timestamp, t)}</p>
+                      <p className="text-gray-700">
+                        <Link to={`/super-admin/tenants/${a.tenantId}`} className="font-medium text-gray-900 hover:text-blue-600">
+                          {a.businessName}
+                        </Link>{" "}
+                        {a.type === "registered"
+                          ? t("superadmin.activity.joined", "joined as a new business")
+                          : a.type === "paymentReceived"
+                            ? `${t("superadmin.activity.paid", "paid")} ${money(a.amount)} (${PLAN_LABEL[a.plan] ?? a.plan})`
+                            : `${t("superadmin.activity.added", "added")} ${a.person}`}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-0.5">{timeAgo(a.at, t)}</p>
                     </div>
-                  );
-                })}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </>
@@ -413,23 +451,6 @@ function TenantStatusBadge({ status }: { status: TenantRow["status"] }) {
     TRIAL: t("superadmin.tenants.status.trial", "TRIAL"),
     SUSPENDED: t("superadmin.tenants.status.suspended", "SUSPENDED"),
     CANCELLED: t("superadmin.tenants.status.cancelled", "CANCELLED"),
-  };
-  return <span className={`badge ${colors[status]}`}>{labels[status]}</span>;
-}
-
-function PaymentStatusBadge({ status }: { status: "PAID" | "PENDING" | "FAILED" | "REFUNDED" }) {
-  const { t } = useLanguage();
-  const colors: Record<string, string> = {
-    PAID: "bg-green-100 text-green-700",
-    PENDING: "bg-amber-100 text-amber-700",
-    FAILED: "bg-red-100 text-red-700",
-    REFUNDED: "bg-gray-100 text-gray-500",
-  };
-  const labels: Record<string, string> = {
-    PAID: t("superadmin.payment.paid", "PAID"),
-    PENDING: t("superadmin.payment.pending", "PENDING"),
-    FAILED: t("superadmin.payment.failed", "FAILED"),
-    REFUNDED: t("superadmin.payment.refunded", "REFUNDED"),
   };
   return <span className={`badge ${colors[status]}`}>{labels[status]}</span>;
 }

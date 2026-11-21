@@ -1,4 +1,7 @@
 import { db } from "@/config/db";
+
+// The app client, or the client inside db.$transaction(...).
+type DbClient = Omit<typeof db, "$connect" | "$disconnect" | "$on" | "$transaction" | "$extends">;
 import { ForbiddenError, NotFoundError } from "@/common/errors/AppError";
 import { PLAN_LIMITS } from "./subscriptions.validation";
 import { PLANS, PLAN_ORDER, PlanName, priceFor, startOfMonthEAT } from "./plans";
@@ -17,8 +20,12 @@ export async function getSubscription(tenantId: string) {
 // payment has been received — see setTenantPlanHandler in the superadmin
 // module. When an M-Pesa/payment integration is added, its confirmation
 // webhook should call this instead.
-export async function setPlan(tenantId: string, plan: PlanName) {
-  const existing = await db.subscription.findUnique({ where: { tenantId } });
+export async function setPlan(
+  tenantId: string,
+  plan: PlanName,
+  client: DbClient = db
+) {
+  const existing = await client.subscription.findUnique({ where: { tenantId } });
   if (!existing) {
     throw new NotFoundError("Subscription not found");
   }
@@ -29,7 +36,7 @@ export async function setPlan(tenantId: string, plan: PlanName) {
   const stillPaid =
     existing.plan === plan && existing.currentPeriodEnd && existing.currentPeriodEnd.getTime() > Date.now();
   const renewFrom = stillPaid ? existing.currentPeriodEnd!.getTime() : Date.now();
-  return db.subscription.update({
+  return client.subscription.update({
     where: { tenantId },
     data: {
       plan,

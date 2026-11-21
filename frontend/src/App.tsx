@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { Layers, Wallet, BarChart2, LifeBuoy, Settings } from "lucide-react";
+import { Layers, BarChart2, LifeBuoy, Settings } from "lucide-react";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { TenantProvider } from "./context/TenantContext";
 import { LanguageProvider, useLanguage } from "./context/LanguageContext";
@@ -11,6 +11,7 @@ import { LandingPage } from "./pages/LandingPage";
 import { LoginPage } from "./pages/LoginPage";
 import { SuperAdminSubscriptionsPage } from "./pages/superadmin/SuperAdminSubscriptionsPage";
 import { SuperAdminUsersPage } from "./pages/superadmin/SuperAdminUsersPage";
+import { SuperAdminPaymentsPage } from "./pages/superadmin/SuperAdminPaymentsPage";
 import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
 import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 import { RegisterPage } from "./pages/RegisterPage";
@@ -128,16 +129,7 @@ function AppRoutes() {
         />
         <Route
           path="/super-admin/payments"
-          element={withSuperAdminLayout(
-            <ComingSoonPage
-              title={t("superadmin.payments.title", "Payments")}
-              description={t(
-                "superadmin.payments.description",
-                "Payment history will appear here once billing is connected to a payment processor."
-              )}
-              icon={Wallet}
-            />
-          )}
+          element={withSuperAdminLayout(<SuperAdminPaymentsPage />)}
         />
         <Route
           path="/super-admin/users"

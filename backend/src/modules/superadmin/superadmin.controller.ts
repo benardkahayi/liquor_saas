@@ -6,8 +6,9 @@ import {
   listSubscriptionsQuerySchema,
   listUsersQuerySchema,
   updateUserStatusSchema,
+  listPaymentsQuerySchema,
+  paymentsOverviewQuerySchema,
 } from "./superadmin.validation";
-import { setPlan } from "@/modules/subscriptions/subscriptions.service";
 import * as superAdminService from "./superadmin.service";
 
 export async function listTenantsHandler(req: Request, res: Response, next: NextFunction) {
@@ -54,13 +55,13 @@ export async function getPlatformStatsHandler(_req: Request, res: Response, next
   }
 }
 
-// Switch a business onto a plan after its payment has been received.
+// Switch a business onto a plan, saving the payment that pays for it.
 export async function setTenantPlanHandler(req: Request, res: Response, next: NextFunction) {
   try {
-    const { plan } = setTenantPlanSchema.parse(req.body);
+    const { plan, payment } = setTenantPlanSchema.parse(req.body);
     const tenantId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-    const subscription = await setPlan(tenantId, plan);
-    res.status(200).json({ data: subscription });
+    const result = await superAdminService.changeTenantPlan(tenantId, plan, payment, req.user?.userId ?? null);
+    res.status(200).json({ data: result });
   } catch (err) {
     next(err);
   }
@@ -90,6 +91,32 @@ export async function updateUserStatusHandler(req: Request, res: Response, next:
     const { isActive } = updateUserStatusSchema.parse(req.body);
     const userId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
     res.status(200).json({ data: await superAdminService.setUserActive(userId, isActive) });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function listPaymentsHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const query = listPaymentsQuerySchema.parse(req.query);
+    res.status(200).json(await superAdminService.listPayments(query));
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function paymentsOverviewHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { range } = paymentsOverviewQuerySchema.parse(req.query);
+    res.status(200).json({ data: await superAdminService.getPaymentsOverview(range) });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function activityHandler(_req: Request, res: Response, next: NextFunction) {
+  try {
+    res.status(200).json({ data: await superAdminService.getActivity(10) });
   } catch (err) {
     next(err);
   }

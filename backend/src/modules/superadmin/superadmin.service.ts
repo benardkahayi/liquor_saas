@@ -1,7 +1,8 @@
 import { Prisma } from "@prisma/client";
 import { db } from "@/config/db";
-import { BadRequestError, NotFoundError } from "@/common/errors/AppError";
+import { BadRequestError, ConflictError, NotFoundError } from "@/common/errors/AppError";
 import { PLANS, PlanName, priceFor, startOfMonthEAT } from "@/modules/subscriptions/plans";
+import { setPlan } from "@/modules/subscriptions/subscriptions.service";
 
 interface ListTenantsInput {
   page: number;
@@ -83,13 +84,20 @@ export async function getPlatformStats() {
     db.sale.aggregate({ where: { status: "COMPLETED" }, _sum: { total: true } }),
   ]);
 
-  const { summary } = await listSubscriptions({});
+  const monthStart = startOfMonthEAT();
+  const [{ summary }, collected] = await Promise.all([
+    listSubscriptions({}),
+    db.subscriptionPayment.aggregate({ where: { paidAt: { gte: monthStart } }, _sum: { amount: true } }),
+  ]);
   return {
     totalTenants,
     activeTenants,
     totalUsers,
     platformRevenue: revenueAgg._sum.total ?? 0,
+    // Expected each month from plans that are paid up right now.
     monthlyIncomeTzs: summary.monthlyIncomeTzs,
+    // Actually received this month (recorded payments).
+    collectedThisMonthTzs: collected._sum.amount ?? 0,
     payingBusinesses: summary.payingNow,
   };
 }
@@ -157,6 +165,8 @@ export async function listSubscriptions(input: {
       plan,
       planLabel: PLANS[plan].label,
       priceTzs: priceFor(plan, t.industry),
+      // What each paid plan costs this business (null = price not set yet).
+      planPrices: { STARTER: priceFor("STARTER", t.industry), PRO: priceFor("PRO", t.industry) },
       paidUntil: end,
       due: dueState(plan, end, now),
       salesThisMonth: salesThisMonth.get(t.id) ?? 0,
@@ -242,4 +252,212 @@ export async function setUserActive(userId: string, isActive: boolean) {
     data: { isActive },
     select: { id: true, isActive: true },
   });
+}
+
+// ---------------------------------------------------------------------------
+// Subscription payments
+// ---------------------------------------------------------------------------
+
+export type SubscriptionPaymentMethod =
+  | "MPESA"
+  | "MIXX_BY_YAS"
+  | "AIRTEL_MONEY"
+  | "HALOPESA"
+  | "BANK"
+  | "CASH"
+  | "OTHER";
+
+export interface PaymentInput {
+  amount: number;
+  method: SubscriptionPaymentMethod;
+  reference?: string;
+  note?: string;
+  paidAt?: Date;
+}
+
+// Change a business's plan. A paid plan needs the payment that pays for it;
+// both are saved together, so a plan is never switched on without a record
+// of the money (and a payment is never saved for a plan change that failed).
+export async function changeTenantPlan(
+  tenantId: string,
+  plan: PlanName,
+  payment: PaymentInput | undefined,
+  recordedById: string | null
+) {
+  if (plan !== "FREE" && !payment) {
+    throw new BadRequestError("Enter the payment (amount, how it was paid, transaction ID) to switch on a paid plan.");
+  }
+
+  const reference = payment?.reference?.trim() || null;
+  if (payment && reference) {
+    const dup = await db.subscriptionPayment.findFirst({
+      where: { method: payment.method, reference: { equals: reference, mode: "insensitive" } },
+      select: { tenant: { select: { name: true } }, paidAt: true },
+    });
+    if (dup) {
+      throw new ConflictError(
+        `This transaction ID was already recorded for ${dup.tenant.name} on ${dup.paidAt.toISOString().slice(0, 10)}.`
+      );
+    }
+  }
+
+  return db.$transaction(async (tx) => {
+    const subscription = await setPlan(tenantId, plan, tx);
+    const saved =
+      payment && plan !== "FREE"
+        ? await tx.subscriptionPayment.create({
+            data: {
+              tenantId,
+              plan,
+              amount: payment.amount,
+              method: payment.method,
+              reference,
+              note: payment.note?.trim() || null,
+              paidAt: payment.paidAt ?? new Date(),
+              periodEnd: subscription.currentPeriodEnd,
+              recordedById,
+            },
+          })
+        : null;
+    return { subscription, payment: saved };
+  });
+}
+
+export async function listPayments(input: { page: number; pageSize: number; tenantId?: string; search?: string }) {
+  const where: Prisma.SubscriptionPaymentWhereInput = {
+    ...(input.tenantId && { tenantId: input.tenantId }),
+    ...(input.search && {
+      OR: [
+        { reference: { contains: input.search, mode: "insensitive" } },
+        { tenant: { name: { contains: input.search, mode: "insensitive" } } },
+      ],
+    }),
+  };
+  const [items, total, sum] = await Promise.all([
+    db.subscriptionPayment.findMany({
+      where,
+      orderBy: { paidAt: "desc" },
+      skip: (input.page - 1) * input.pageSize,
+      take: input.pageSize,
+      include: { tenant: { select: { id: true, name: true } } },
+    }),
+    db.subscriptionPayment.count({ where }),
+    db.subscriptionPayment.aggregate({ where, _sum: { amount: true } }),
+  ]);
+  return {
+    items,
+    totalAmount: sum._sum.amount ?? 0,
+    pagination: { page: input.page, pageSize: input.pageSize, total, totalPages: Math.ceil(total / input.pageSize) },
+  };
+}
+
+export type OverviewRange = "7D" | "30D" | "3M" | "1Y";
+
+const EAT_OFFSET = 3 * 60 * 60 * 1000;
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+// Start of the EAT day containing `t`, as a UTC timestamp.
+function startOfDayEAT(t: number) {
+  const d = new Date(t + EAT_OFFSET);
+  return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) - EAT_OFFSET;
+}
+
+// Buckets for the money-received chart: days for short ranges, weeks for
+// three months, calendar months for a year. All in East Africa Time.
+function buildBuckets(range: OverviewRange, now = Date.now()) {
+  const buckets: { label: string; start: number; end: number }[] = [];
+  const label = (t: number) => {
+    const d = new Date(t + EAT_OFFSET);
+    return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}`;
+  };
+  if (range === "1Y") {
+    const d = new Date(now + EAT_OFFSET);
+    for (let i = 11; i >= 0; i--) {
+      const y = d.getUTCFullYear();
+      const m = d.getUTCMonth() - i;
+      const start = Date.UTC(y, m, 1) - EAT_OFFSET;
+      const end = Date.UTC(y, m + 1, 1) - EAT_OFFSET;
+      buckets.push({ label: MONTHS[new Date(start + EAT_OFFSET).getUTCMonth()], start, end });
+    }
+    return buckets;
+  }
+  const [count, days] = range === "7D" ? [7, 1] : range === "30D" ? [10, 3] : [13, 7];
+  const tomorrow = startOfDayEAT(now) + DAY;
+  for (let i = count - 1; i >= 0; i--) {
+    const end = tomorrow - i * days * DAY;
+    const start = end - days * DAY;
+    buckets.push({ label: label(start), start, end });
+  }
+  return buckets;
+}
+
+// Money actually received over a period, for the dashboard chart, plus the
+// latest payments.
+export async function getPaymentsOverview(range: OverviewRange) {
+  const buckets = buildBuckets(range);
+  const from = new Date(buckets[0].start);
+  const prevFrom = new Date(from.getTime() - (Date.now() - from.getTime()));
+  const [inRange, previous, recent] = await Promise.all([
+    db.subscriptionPayment.findMany({ where: { paidAt: { gte: from } }, select: { amount: true, paidAt: true } }),
+    db.subscriptionPayment.aggregate({ where: { paidAt: { gte: prevFrom, lt: from } }, _sum: { amount: true } }),
+    db.subscriptionPayment.findMany({
+      orderBy: { paidAt: "desc" },
+      take: 8,
+      include: { tenant: { select: { id: true, name: true } } },
+    }),
+  ]);
+  const points = buckets.map((b) => ({ label: b.label, value: 0 }));
+  let total = 0;
+  for (const p of inRange) {
+    const t = p.paidAt.getTime();
+    const i = buckets.findIndex((b) => t >= b.start && t < b.end);
+    if (i >= 0) {
+      points[i].value += p.amount;
+      total += p.amount;
+    }
+  }
+  return { range, total, previousTotal: previous._sum.amount ?? 0, points, recent };
+}
+
+// What happened on the platform lately, built from real records: new
+// businesses, payments received, and staff added to a business.
+export async function getActivity(limit = 10) {
+  const [tenants, payments, users] = await Promise.all([
+    db.tenant.findMany({ orderBy: { createdAt: "desc" }, take: limit, select: { id: true, name: true, createdAt: true } }),
+    db.subscriptionPayment.findMany({
+      orderBy: { paidAt: "desc" },
+      take: limit,
+      select: { id: true, amount: true, plan: true, paidAt: true, tenant: { select: { id: true, name: true } } },
+    }),
+    db.user.findMany({
+      where: { isSuperAdmin: false, tenantId: { not: null }, NOT: { role: { name: "Owner" } } },
+      orderBy: { createdAt: "desc" },
+      take: limit,
+      select: { id: true, fullName: true, createdAt: true, tenant: { select: { id: true, name: true } } },
+    }),
+  ]);
+  const events = [
+    ...tenants.map((t) => ({ id: `t-${t.id}`, type: "registered" as const, tenantId: t.id, businessName: t.name, at: t.createdAt })),
+    ...payments.map((p) => ({
+      id: `p-${p.id}`,
+      type: "paymentReceived" as const,
+      tenantId: p.tenant.id,
+      businessName: p.tenant.name,
+      at: p.paidAt,
+      amount: p.amount,
+      plan: p.plan,
+    })),
+    ...users
+      .filter((u) => u.tenant)
+      .map((u) => ({
+        id: `u-${u.id}`,
+        type: "userAdded" as const,
+        tenantId: u.tenant!.id,
+        businessName: u.tenant!.name,
+        at: u.createdAt,
+        person: u.fullName,
+      })),
+  ];
+  events.sort((a, b) => b.at.getTime() - a.at.getTime());
+  return events.slice(0, limit);
 }

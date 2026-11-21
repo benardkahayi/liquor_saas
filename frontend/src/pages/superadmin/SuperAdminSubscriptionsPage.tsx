@@ -5,6 +5,7 @@ import { api } from "../../api/client";
 import { money } from "../../lib/money";
 import { useLanguage } from "../../context/LanguageContext";
 import { ErrorBanner, extractErrorMessage } from "../../components/ErrorBanner";
+import { RecordPaymentModal } from "../../components/RecordPaymentModal";
 
 type PlanName = "FREE" | "STARTER" | "PRO";
 type Due = "free" | "paid" | "expiring" | "expired";
@@ -19,6 +20,7 @@ interface Row {
   plan: PlanName;
   planLabel: string;
   priceTzs: number | null;
+  planPrices: { STARTER: number | null; PRO: number | null };
   paidUntil: string | null;
   due: Due;
   salesThisMonth: number;
@@ -59,6 +61,7 @@ export function SuperAdminSubscriptionsPage() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [paying, setPaying] = useState<{ row: Row; plan: Exclude<PlanName, "FREE"> } | null>(null);
 
   function load() {
     setIsLoading(true);
@@ -79,15 +82,13 @@ export function SuperAdminSubscriptionsPage() {
 
   useEffect(load, [filter, search]);
 
+  // Paid plans open the payment form; moving to Free just needs a yes.
   async function changePlan(row: Row, plan: PlanName) {
-    const renewing = plan === row.plan;
-    const message =
-      plan === "FREE"
-        ? `Move "${row.name}" to the Free plan?`
-        : renewing
-          ? `Record a payment for "${row.name}" and add 30 days to ${row.planLabel}?`
-          : `Switch "${row.name}" to ${plan === "STARTER" ? "Starter" : "Pro"}? This gives them 30 days. Only do this after they have paid.`;
-    if (!confirm(message)) return;
+    if (plan !== "FREE") {
+      setPaying({ row, plan });
+      return;
+    }
+    if (!confirm(`Move "${row.name}" to the Free plan? Their paid time ends now.`)) return;
     setBusyId(row.tenantId);
     try {
       await api.put(`/superadmin/tenants/${row.tenantId}/plan`, { plan });
@@ -121,7 +122,7 @@ export function SuperAdminSubscriptionsPage() {
 
       {summary && (
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <Stat label={t("superadmin.subs.income", "Monthly income")} value={money(summary.monthlyIncomeTzs)} note={t("superadmin.subs.incomeNote", "From plans that are paid up")} />
+          <Stat label={t("superadmin.subs.expected", "Expected each month")} value={money(summary.monthlyIncomeTzs)} note={t("superadmin.subs.incomeNote", "From plans that are paid up")} />
           <Stat label={t("superadmin.subs.paying", "Paying businesses")} value={String(summary.payingNow)} note={`${summary.businesses} ${t("superadmin.subs.total", "in total")}`} />
           <Stat label={t("superadmin.subs.expiring", "Ending in 7 days")} value={String(summary.expiringSoon)} note={t("superadmin.subs.expiringNote", "Remind them to pay")} tone={summary.expiringSoon ? "amber" : undefined} />
           <Stat label={t("superadmin.subs.expired", "Payment overdue")} value={String(summary.expired)} note={t("superadmin.subs.expiredNote", "Paid plan, date passed")} tone={summary.expired ? "red" : undefined} />
@@ -229,7 +230,7 @@ export function SuperAdminSubscriptionsPage() {
                         onClick={() => changePlan(r, r.plan)}
                         className="rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
                       >
-                        {t("superadmin.subs.renew", "+30 days")}
+                        {t("superadmin.subs.renewPay", "Record renewal")}
                       </button>
                     )}
                   </div>
@@ -241,10 +242,28 @@ export function SuperAdminSubscriptionsPage() {
       </div>
       <p className="text-xs text-gray-400">
         {t(
-          "superadmin.subs.howTo",
-          "After a business pays you, pick its plan here (or press +30 days for a renewal). Paying early adds 30 days on top of the time left."
-        )}
+          "superadmin.subs.howToPay",
+          "When a business pays you, choose its plan (or Record renewal) and enter the amount and transaction ID. Paying early adds 30 days on top of the time left."
+        )}{" "}
+        <Link to="/super-admin/payments" className="text-blue-600 hover:underline">
+          {t("superadmin.subs.seePayments", "See all payments")}
+        </Link>
       </p>
+
+      {paying && (
+        <RecordPaymentModal
+          tenantId={paying.row.tenantId}
+          businessName={paying.row.name}
+          currentPlan={paying.row.plan}
+          plan={paying.plan}
+          priceTzs={paying.row.planPrices[paying.plan]}
+          onClose={() => setPaying(null)}
+          onSaved={() => {
+            setPaying(null);
+            load();
+          }}
+        />
+      )}
     </div>
   );
 }
