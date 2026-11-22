@@ -145,7 +145,8 @@ export async function emailTestHandler(req: Request, res: Response, next: NextFu
           to: me.email,
           ...setup,
           problem: "Email isn't set up on the server.",
-          advice: "On Render → bizsmart-api → Environment, add BREVO_API_KEY and MAIL_FROM_EMAIL, save, and wait for the redeploy.",
+          advice:
+            "On Render → bizsmart-api → Environment, add EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, EMAILJS_PUBLIC_KEY and EMAILJS_PRIVATE_KEY (all four), save, and wait for the redeploy.",
         },
       });
       return;
@@ -166,8 +167,10 @@ export async function emailTestHandler(req: Request, res: Response, next: NextFu
           ok: false,
           to: me.email,
           ...setup,
-          problem: e ? `Brevo said (${e.status}): ${e.providerMessage}` : `Couldn't reach Brevo: ${(err as Error).message}`,
-          advice: e ? e.advice : "The server couldn't connect to Brevo. Try again in a minute.",
+          problem: e
+            ? `${e.serviceName} said (${e.status}): ${e.providerMessage}`
+            : `Couldn't reach the email service: ${(err as Error).message}`,
+          advice: e ? e.advice : "The server couldn't connect to the email service. Try again in a minute.",
         },
       });
     }

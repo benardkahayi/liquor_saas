@@ -674,7 +674,7 @@ export const sw: Record<string, string> = {
   // Email check
   "superadmin.settings.subtitle": "Ukaguzi wa mipangilio ya mfumo.",
   "superadmin.email.title": "Barua pepe",
-  "superadmin.email.intro": "Viungo vya kubadilisha nenosiri vinatumwa kwa barua pepe kupitia Brevo. Jitumie barua ya majaribio kuhakikisha inafanya kazi.",
+  "superadmin.email.intro": "Viungo vya kubadilisha nenosiri vinatumwa kwa barua pepe. Jitumie barua ya majaribio kuhakikisha inafanya kazi.",
   "superadmin.email.key": "Ufunguo wa Brevo (BREVO_API_KEY)",
   "superadmin.email.from": "Mtumaji (MAIL_FROM_EMAIL)",
   "superadmin.email.link": "Viungo vinafungua (APP_URL)",
@@ -685,4 +685,7 @@ export const sw: Record<string, string> = {
   "superadmin.email.sent": "Brevo imepokea barua kwenda {e}. Angalia sanduku hilo (na Spam). Ikifika, barua za kubadilisha nenosiri zinafanya kazi.",
   "superadmin.email.loadError": "Imeshindikana kupakia mipangilio ya barua pepe",
   "superadmin.email.testError": "Imeshindikana kufanya jaribio la barua pepe",
+  "superadmin.email.service": "Huduma ya barua pepe",
+  "superadmin.email.notSetUp": "Haijawekwa",
+  "superadmin.email.sentAny": "Huduma ya barua pepe imepokea barua kwenda {e}. Angalia sanduku hilo (na Spam). Ikifika, barua za kubadilisha nenosiri zinafanya kazi.",
 };

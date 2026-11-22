@@ -6,6 +6,8 @@ import { ErrorBanner, extractErrorMessage } from "../../components/ErrorBanner";
 
 interface EmailSetup {
   configured: boolean;
+  service: "emailjs" | "brevo" | null;
+  emailjs: { serviceId: boolean; templateId: boolean; publicKey: boolean; privateKey: boolean };
   hasApiKey: boolean;
   from: string | null;
   fromName: string;
@@ -73,22 +75,55 @@ export function SuperAdminSettingsPage() {
         <p className="mb-4 text-sm text-gray-600">
           {t(
             "superadmin.email.intro",
-            "Password reset links are sent by email through Brevo. Send yourself a test to check it works."
+            "Password reset links are sent by email. Send yourself a test to check it works."
           )}
         </p>
 
         {setup && (
           <dl className="mb-4 divide-y divide-gray-100 border-y border-gray-100">
             <Row
-              label={t("superadmin.email.key", "Brevo API key (BREVO_API_KEY)")}
-              value={setup.hasApiKey ? t("superadmin.email.set", "Set") : t("superadmin.email.missing", "Missing")}
-              bad={!setup.hasApiKey}
+              label={t("superadmin.email.service", "Email service")}
+              value={
+                setup.service === "emailjs"
+                  ? "EmailJS"
+                  : setup.service === "brevo"
+                    ? "Brevo"
+                    : t("superadmin.email.notSetUp", "Not set up")
+              }
+              bad={!setup.service}
             />
-            <Row
-              label={t("superadmin.email.from", "Sender (MAIL_FROM_EMAIL)")}
-              value={setup.from ?? t("superadmin.email.missing", "Missing")}
-              bad={!setup.from}
-            />
+            {setup.service !== "brevo" ? (
+              <>
+                {(
+                  [
+                    ["EMAILJS_SERVICE_ID", setup.emailjs.serviceId],
+                    ["EMAILJS_TEMPLATE_ID", setup.emailjs.templateId],
+                    ["EMAILJS_PUBLIC_KEY", setup.emailjs.publicKey],
+                    ["EMAILJS_PRIVATE_KEY", setup.emailjs.privateKey],
+                  ] as const
+                ).map(([name, isSet]) => (
+                  <Row
+                    key={name}
+                    label={name}
+                    value={isSet ? t("superadmin.email.set", "Set") : t("superadmin.email.missing", "Missing")}
+                    bad={!isSet}
+                  />
+                ))}
+              </>
+            ) : (
+              <>
+                <Row
+                  label={t("superadmin.email.key", "Brevo API key (BREVO_API_KEY)")}
+                  value={setup.hasApiKey ? t("superadmin.email.set", "Set") : t("superadmin.email.missing", "Missing")}
+                  bad={!setup.hasApiKey}
+                />
+                <Row
+                  label={t("superadmin.email.from", "Sender (MAIL_FROM_EMAIL)")}
+                  value={setup.from ?? t("superadmin.email.missing", "Missing")}
+                  bad={!setup.from}
+                />
+              </>
+            )}
             <Row
               label={t("superadmin.email.link", "Reset links open (APP_URL)")}
               value={setup.appUrl ?? t("superadmin.email.missing", "Missing")}
@@ -105,7 +140,7 @@ export function SuperAdminSettingsPage() {
           <div className="mt-4 flex gap-2 rounded-lg bg-green-50 p-3 text-sm text-green-800">
             <CheckCircle2 size={18} className="mt-0.5 shrink-0" />
             <p>
-              {t("superadmin.email.sent", "Brevo accepted the email to {e}. Check that inbox (and Spam). If it arrives, password reset emails work.").replace(
+              {t("superadmin.email.sentAny", "The email service accepted the email to {e}. Check that inbox (and Spam). If it arrives, password reset emails work.").replace(
                 "{e}",
                 result.to
               )}

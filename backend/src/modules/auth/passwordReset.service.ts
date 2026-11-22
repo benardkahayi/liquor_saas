@@ -92,11 +92,11 @@ export async function requestPasswordReset(rawEmail: string): Promise<void> {
 
   const link = `${appUrl()}/reset-password?token=${encodeURIComponent(token)}`;
   const { subject, text, html } = resetEmail(user.fullName, link);
-  // Sent in the background: waiting for Brevo would make answers for real
+  // Sent in the background: waiting for the email service would make answers for real
   // accounts slower than for unknown emails, which would give away who is
   // registered. Failures are logged for you to see in Render.
   void sendEmail({ to: user.email, toName: user.fullName, subject, text, html })
-    .then(() => console.info("[password reset] email handed to Brevo"))
+    .then(() => console.info("[password reset] email handed to the email service"))
     .catch((err) => console.error("[password reset] email failed:", err));
 }
 
