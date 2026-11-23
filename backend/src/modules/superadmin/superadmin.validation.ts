@@ -64,3 +64,7 @@ export const listUsersQuerySchema = z.object({
 export const updateUserStatusSchema = z.object({
   isActive: z.boolean(),
 });
+
+export const deleteTenantSchema = z.object({
+  confirmName: z.string().min(1, "Type the business name to confirm"),
+});

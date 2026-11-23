@@ -8,6 +8,7 @@ import {
   updateUserStatusSchema,
   listPaymentsQuerySchema,
   paymentsOverviewQuerySchema,
+  deleteTenantSchema,
 } from "./superadmin.validation";
 import * as superAdminService from "./superadmin.service";
 import { db } from "@/config/db";
@@ -174,6 +175,17 @@ export async function emailTestHandler(req: Request, res: Response, next: NextFu
         },
       });
     }
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function deleteTenantHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { confirmName } = deleteTenantSchema.parse(req.body);
+    const tenantId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const deleted = await superAdminService.deleteTenant(tenantId, confirmName, req.user?.userId ?? null);
+    res.status(200).json({ data: deleted });
   } catch (err) {
     next(err);
   }

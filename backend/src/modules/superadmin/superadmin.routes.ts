@@ -15,6 +15,7 @@ import {
   activityHandler,
   emailStatusHandler,
   emailTestHandler,
+  deleteTenantHandler,
 } from "./superadmin.controller";
 
 const router = Router();
@@ -25,6 +26,7 @@ router.get("/stats", getPlatformStatsHandler);
 router.get("/tenants", listTenantsHandler);
 router.get("/tenants/:id", getTenantHandler);
 router.put("/tenants/:id/status", updateTenantStatusHandler);
+router.delete("/tenants/:id", deleteTenantHandler);
 router.put("/tenants/:id/plan", setTenantPlanHandler);
 router.get("/subscriptions", listSubscriptionsHandler);
 router.get("/users", listUsersHandler);

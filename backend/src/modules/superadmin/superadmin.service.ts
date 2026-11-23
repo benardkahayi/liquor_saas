@@ -53,7 +53,9 @@ export async function getTenantById(tenantId: string) {
     include: {
       settings: true,
       subscription: true,
-      _count: { select: { users: true, products: true, sales: true } },
+      _count: {
+        select: { users: true, products: true, sales: true, orders: true, customers: true, subscriptionPayments: true },
+      },
     },
   });
 
@@ -460,4 +462,45 @@ export async function getActivity(limit = 10) {
   ];
   events.sort((a, b) => b.at.getTime() - a.at.getTime());
   return events.slice(0, limit);
+}
+
+// ---------------------------------------------------------------------------
+// Delete a business
+// ---------------------------------------------------------------------------
+
+// Permanently removes a business and everything in it: staff accounts,
+// products, sales, orders, customers, payments. It can't be undone, so the
+// admin must type the business's exact name.
+//
+// Sales, orders, purchases and stock history are removed first: they point at
+// products, menu items and cashiers in a way the database won't let go of
+// while they still exist. Everything else is removed with the business.
+export async function deleteTenant(tenantId: string, confirmName: string, deletedBy: string | null) {
+  const tenant = await db.tenant.findUnique({
+    where: { id: tenantId },
+    select: { id: true, name: true, slug: true, _count: { select: { users: true, sales: true, orders: true } } },
+  });
+  if (!tenant) throw new NotFoundError("Business not found");
+  if (confirmName.trim() !== tenant.name.trim()) {
+    throw new BadRequestError("The name you typed doesn't match the business name. Nothing was deleted.");
+  }
+
+  await db.$transaction(
+    async (tx) => {
+      await tx.orderPayment.deleteMany({ where: { tenantId } });
+      await tx.orderItem.deleteMany({ where: { order: { tenantId } } });
+      await tx.order.deleteMany({ where: { tenantId } });
+      await tx.sale.deleteMany({ where: { tenantId } }); // its items and payments go with it
+      await tx.purchase.deleteMany({ where: { tenantId } }); // its items go with it
+      await tx.inventoryTransaction.deleteMany({ where: { tenantId } });
+      await tx.tenant.delete({ where: { id: tenantId } }); // everything else goes with it
+    },
+    { timeout: 60_000, maxWait: 10_000 }
+  );
+
+  console.info(
+    `[superadmin] business "${tenant.name}" (${tenant.slug}) deleted by ${deletedBy ?? "unknown"}: ` +
+      `${tenant._count.users} users, ${tenant._count.sales} sales, ${tenant._count.orders} orders`
+  );
+  return { id: tenant.id, name: tenant.name };
 }
