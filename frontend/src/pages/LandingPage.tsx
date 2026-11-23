@@ -4,6 +4,7 @@ import { Menu, X, Check, Phone, Mail } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../context/LanguageContext";
 import { LanguageSwitcher } from "../components/LanguageSwitcher";
+import { InstallAppButton } from "../components/InstallAppButton";
 import { BusinessSlider } from "../components/landing/BusinessSlider";
 
 
@@ -57,6 +58,7 @@ export function LandingPage() {
           </nav>
 
           <div className="hidden items-center gap-3 md:flex">
+            <InstallAppButton variant="link" />
             <LanguageSwitcher />
             {user ? (
               <Link to={dashboardHref} className="home-btn">{t("landing.nav.goToDashboard", "Go to Dashboard")}</Link>
@@ -86,6 +88,7 @@ export function LandingPage() {
               </a>
             ))}
             <div className="flex flex-col gap-2 border-t border-[#EEF2EF] pt-3">
+              <InstallAppButton variant="home" className="w-full" />
               {user ? (
                 <Link to={dashboardHref} className="home-btn text-center">{t("landing.nav.goToDashboard", "Go to Dashboard")}</Link>
               ) : (

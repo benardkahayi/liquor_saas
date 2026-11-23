@@ -31,6 +31,7 @@ import { useAuth } from "../context/AuthContext";
 import { useTenant } from "../context/TenantContext";
 import { useLanguage } from "../context/LanguageContext";
 import { LanguageSwitcher } from "./LanguageSwitcher";
+import { InstallAppButton } from "./InstallAppButton";
 import { isRestaurant } from "../lib/businessTypes";
 
 interface NavItem {
@@ -185,6 +186,7 @@ export function Layout({ children }: { children: ReactNode }) {
               </button>
             ))}
           </div>
+          <InstallAppButton variant="menu" className="mt-2" />
         </div>
 
         <nav className="flex flex-col gap-5">

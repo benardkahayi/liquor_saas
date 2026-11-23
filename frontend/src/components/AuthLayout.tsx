@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { ArrowLeft } from "lucide-react";
 import { LanguageSwitcher } from "./LanguageSwitcher";
+import { InstallAppButton } from "./InstallAppButton";
 import { useLanguage } from "../context/LanguageContext";
 import { buildBaseOrigin } from "../lib/tenantHost";
 
@@ -41,6 +42,11 @@ export function AuthLayout({ title, subtitle, children, footer }: AuthLayoutProp
           </div>
         </div>
       </header>
+
+      {/* On phones: offer the app before signing in. */}
+      <div className="flex justify-center pt-5 sm:hidden">
+        <InstallAppButton variant="link" />
+      </div>
 
       <main className="flex justify-center px-4 py-10 sm:py-14">
         <div className="w-full max-w-sm">
