@@ -8,6 +8,7 @@ import {
 } from "@/common/utils/jwt";
 import { generateUniqueSlug } from "@/common/utils/slug";
 import { ConflictError, UnauthorizedError, NotFoundError } from "@/common/errors/AppError";
+import { notifyNewBusiness } from "@/modules/superadmin/notifications";
 
 const DEFAULT_PERMISSIONS = [
   { key: "products.view", label: "View products" },
@@ -37,13 +38,17 @@ const DEFAULT_PERMISSIONS = [
 interface RegisterInput {
   businessName: string;
   ownerEmail: string;
+  ownerPhone: string;
   ownerPassword: string;
   ownerFullName: string;
   industry?: string;
 }
 
 export async function registerTenant(input: RegisterInput) {
-  const existing = await db.user.findUnique({ where: { email: input.ownerEmail } });
+  const existing = await db.user.findFirst({
+    where: { email: { equals: input.ownerEmail, mode: "insensitive" } },
+    select: { id: true },
+  });
   if (existing) {
     throw new ConflictError("An account with this email already exists");
   }
@@ -58,7 +63,7 @@ export async function registerTenant(input: RegisterInput) {
           name: input.businessName,
           slug,
           ...(input.industry && { industry: input.industry }),
-          settings: { create: {} },
+          settings: { create: { phone: input.ownerPhone } },
           subscription: { create: {} },
         },
       });
@@ -141,6 +146,7 @@ export async function registerTenant(input: RegisterInput) {
           passwordHash,
           fullName: input.ownerFullName,
           roleId: ownerRole.id,
+          lastActiveAt: new Date(),
         },
       });
 
@@ -148,6 +154,17 @@ export async function registerTenant(input: RegisterInput) {
     },
     { timeout: 15000 }
   );
+
+  // Tell the platform admin a new business has joined (in the background;
+  // a slow or failed email never holds up the sign-up).
+  void notifyNewBusiness({
+    tenantId: result.tenant.id,
+    businessName: result.tenant.name,
+    industry: result.tenant.industry,
+    ownerName: input.ownerFullName,
+    ownerEmail: input.ownerEmail,
+    ownerPhone: input.ownerPhone,
+  });
 
   return {
     ...issueTokens(result.owner.id, result.tenant.id, false, result.owner.roleId),
@@ -167,8 +184,9 @@ interface LoginInput {
 }
 
 export async function login(input: LoginInput) {
-  const user = await db.user.findUnique({
-    where: { email: input.email },
+  // Emails match whatever their capitals: Asha@Gmail.com = asha@gmail.com.
+  const user = await db.user.findFirst({
+    where: { email: { equals: input.email, mode: "insensitive" } },
     include: { tenant: { select: { slug: true } } },
   });
 
@@ -178,6 +196,8 @@ export async function login(input: LoginInput) {
   if (!user || !user.isActive || !passwordValid) {
     throw new UnauthorizedError("Invalid email or password");
   }
+
+  await db.user.update({ where: { id: user.id }, data: { lastActiveAt: new Date() } });
 
   return {
     ...issueTokens(user.id, user.tenantId, user.isSuperAdmin, user.roleId),
@@ -202,6 +222,12 @@ export async function refreshAccessToken(refreshToken: string) {
   const issuedAtMs = ((payload as { iat?: number }).iat ?? 0) * 1000;
   if (user.passwordChangedAt && issuedAtMs < user.passwordChangedAt.getTime() - 1000) {
     throw new UnauthorizedError("Your password was changed. Please sign in again.");
+  }
+
+  // The app renews its sign-in about every 15 minutes while in use, so this
+  // keeps "last active" current. At most one write per 10 minutes.
+  if (!user.lastActiveAt || Date.now() - user.lastActiveAt.getTime() > 10 * 60 * 1000) {
+    await db.user.update({ where: { id: user.id }, data: { lastActiveAt: new Date() } });
   }
 
   const accessToken = signAccessToken({

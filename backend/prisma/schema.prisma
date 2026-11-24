@@ -160,6 +160,8 @@ model User {
   isActive     Boolean  @default(true)
   // Set when the password is reset; logins made before this stop working.
   passwordChangedAt DateTime?
+  // Last time this person used the app (login, or the app keeping them signed in).
+  lastActiveAt DateTime?
 
   roleId       String?
   role         Role?    @relation(fields: [roleId], references: [id])

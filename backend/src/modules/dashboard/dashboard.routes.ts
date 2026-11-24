@@ -8,6 +8,7 @@ import {
   getSalesOverTimeHandler,
   getTopProductsHandler,
   getSalesByPaymentMethodHandler,
+  getShopOverviewHandler,
 } from "./dashboard.controller";
 
 const router = Router();
@@ -15,6 +16,7 @@ const router = Router();
 router.use(requireAuth, resolveTenant);
 
 router.get("/summary", requirePermission("reports.view"), getSummaryHandler);
+router.get("/overview", requirePermission("reports.view"), getShopOverviewHandler);
 router.get("/restaurant-summary", requirePermission("restaurant.reports.view"), getRestaurantSummaryHandler);
 router.get("/charts/sales-over-time", requirePermission("reports.view"), getSalesOverTimeHandler);
 router.get("/charts/top-products", requirePermission("reports.view"), getTopProductsHandler);
@@ -24,4 +26,4 @@ router.get(
   getSalesByPaymentMethodHandler
 );
 
-export default router;
+export default router;

@@ -25,7 +25,8 @@ export async function listTenants(input: ListTenantsInput) {
       orderBy: { createdAt: "desc" },
       include: {
         subscription: true,
-        _count: { select: { users: true } },
+        settings: { select: { phone: true } },
+        _count: { select: { users: true, products: true } },
         users: {
           where: { role: { name: "Owner" } },
           select: { fullName: true, email: true },
@@ -36,8 +37,10 @@ export async function listTenants(input: ListTenantsInput) {
     db.tenant.count({ where }),
   ]);
 
+  const activity = await getActivityFor(items.map((t) => ({ id: t.id, createdAt: t.createdAt, products: t._count.products })));
+
   return {
-    items,
+    items: items.map((t) => ({ ...t, activity: activity.get(t.id) })),
     pagination: {
       page: input.page,
       pageSize: input.pageSize,
@@ -503,4 +506,80 @@ export async function deleteTenant(tenantId: string, confirmName: string, delete
       `${tenant._count.users} users, ${tenant._count.sales} sales, ${tenant._count.orders} orders`
   );
   return { id: tenant.id, name: tenant.name };
+}
+
+// ---------------------------------------------------------------------------
+// How actively each business uses the app
+// ---------------------------------------------------------------------------
+
+export type ActivityLevel = "active" | "trying" | "quiet" | "new" | "signed_up_only";
+
+export interface TenantActivity {
+  level: ActivityLevel;
+  salesLast7Days: number; // sales + restaurant orders
+  daysWithSalesLast7: number;
+  lastSaleAt: Date | null;
+  lastActiveAt: Date | null; // latest login / use by anyone in the business
+  products: number;
+}
+
+// Sales and restaurant orders count the same. Days are East Africa Time days.
+//   active          sold on 3 or more of the last 7 days
+//   trying          some sales this week, or products added but no sales yet
+//   quiet           used to sell, nothing in the last 7 days
+//   new             registered under 2 days ago, nothing yet
+//   signed_up_only  2+ days old, no products and no sales
+export async function getActivityFor(
+  tenants: { id: string; createdAt: Date; products: number }[]
+): Promise<Map<string, TenantActivity>> {
+  const result = new Map<string, TenantActivity>();
+  if (tenants.length === 0) return result;
+  const ids = tenants.map((t) => t.id);
+
+  const [sales, seen] = await Promise.all([
+    db.$queryRaw<{ tenantId: string; n7: number; days7: number; last: Date | null }[]>`
+      SELECT "tenantId",
+             COUNT(*) FILTER (WHERE "createdAt" >= now() - interval '7 days')::int AS n7,
+             COUNT(DISTINCT (("createdAt" AT TIME ZONE 'UTC') AT TIME ZONE 'Africa/Dar_es_Salaam')::date)
+               FILTER (WHERE "createdAt" >= now() - interval '7 days')::int AS days7,
+             MAX("createdAt") AS last
+      FROM (
+        SELECT "tenantId", "createdAt" FROM sales WHERE "tenantId" = ANY(${ids}::text[])
+        UNION ALL
+        SELECT "tenantId", "createdAt" FROM orders WHERE "tenantId" = ANY(${ids}::text[])
+      ) s
+      GROUP BY "tenantId"`,
+    db.user.groupBy({ by: ["tenantId"], where: { tenantId: { in: ids } }, _max: { lastActiveAt: true } }),
+  ]);
+  const salesBy = new Map(sales.map((r) => [r.tenantId, r]));
+  const seenBy = new Map(seen.map((r) => [r.tenantId, r._max.lastActiveAt]));
+
+  const now = Date.now();
+  for (const t of tenants) {
+    const s = salesBy.get(t.id);
+    const n7 = s?.n7 ?? 0;
+    const days7 = s?.days7 ?? 0;
+    const last = s?.last ?? null;
+    const level: ActivityLevel =
+      days7 >= 3
+        ? "active"
+        : n7 > 0
+          ? "trying"
+          : last
+            ? "quiet"
+            : t.products > 0
+              ? "trying"
+              : now - t.createdAt.getTime() < 2 * DAY
+                ? "new"
+                : "signed_up_only";
+    result.set(t.id, {
+      level,
+      salesLast7Days: n7,
+      daysWithSalesLast7: days7,
+      lastSaleAt: last,
+      lastActiveAt: seenBy.get(t.id) ?? null,
+      products: t.products,
+    });
+  }
+  return result;
 }

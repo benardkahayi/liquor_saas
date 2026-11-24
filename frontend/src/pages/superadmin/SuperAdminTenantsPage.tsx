@@ -7,12 +7,40 @@ import { ErrorBanner, extractErrorMessage } from "../../components/ErrorBanner";
 
 type TenantStatus = "ACTIVE" | "SUSPENDED" | "TRIAL" | "CANCELLED";
 
+type ActivityLevel = "active" | "trying" | "quiet" | "new" | "signed_up_only";
+
+interface TenantActivity {
+  level: ActivityLevel;
+  salesLast7Days: number;
+  daysWithSalesLast7: number;
+  lastSaleAt: string | null;
+  lastActiveAt: string | null;
+  products: number;
+}
+
 interface Tenant {
   id: string;
   name: string;
   status: TenantStatus;
   createdAt: string;
-  _count: { users: number };
+  _count: { users: number; products?: number };
+  settings?: { phone: string | null } | null;
+  users?: { fullName: string; email: string }[];
+  activity?: TenantActivity;
+}
+
+// +255712345678 -> 0712 345 678
+function displayPhone(p: string): string {
+  return /^\+255\d{9}$/.test(p) ? `0${p.slice(4, 7)} ${p.slice(7, 10)} ${p.slice(10)}` : p;
+}
+
+function ago(iso: string | null, t: (key: string, fallback: string) => string): string {
+  if (!iso) return t("superadmin.activity.never", "Never");
+  const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+  if (mins < 60) return t("superadmin.time.justNow", "Just now");
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}${t("superadmin.time.hoursAgo", "h ago")}`;
+  return `${Math.floor(hours / 24)}${t("superadmin.time.daysAgo", "d ago")}`;
 }
 
 interface PaginationInfo {
@@ -98,13 +126,16 @@ export function SuperAdminTenantsPage() {
         </select>
       </div>
 
-      <div className="card overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="card overflow-x-auto">
+        <table className="w-full min-w-[820px] text-sm">
           <thead className="bg-gray-50 text-gray-500 text-left uppercase text-xs tracking-wide">
             <tr>
               <th className="px-4 py-2 font-medium">{t("customers.col.name", "Name")}</th>
+              <th className="px-4 py-2 font-medium">{t("superadmin.activity.col", "Activity")}</th>
+              <th className="px-4 py-2 font-medium text-right">{t("superadmin.activity.sales7", "Sales, 7 days")}</th>
+              <th className="px-4 py-2 font-medium text-right">{t("nav.products", "Products")}</th>
+              <th className="px-4 py-2 font-medium">{t("superadmin.activity.lastActive", "Last active")}</th>
               <th className="px-4 py-2 font-medium">{t("settings.status", "Status")}</th>
-              <th className="px-4 py-2 font-medium">{t("nav.users", "Users")}</th>
               <th className="px-4 py-2 font-medium">{t("superadmin.tenants.created", "Created")}</th>
               <th className="px-4 py-2 font-medium"></th>
             </tr>
@@ -112,14 +143,14 @@ export function SuperAdminTenantsPage() {
           <tbody>
             {isLoading && (
               <tr>
-                <td colSpan={5} className="px-4 py-6 text-center text-gray-400">
+                <td colSpan={8} className="px-4 py-6 text-center text-gray-400">
                   {t("common.loading", "Loading...")}
                 </td>
               </tr>
             )}
             {!isLoading && tenants.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-6 text-center text-gray-400">
+                <td colSpan={8} className="px-4 py-6 text-center text-gray-400">
                   {t("superadmin.tenants.empty", "No tenants found.")}
                 </td>
               </tr>
@@ -127,14 +158,34 @@ export function SuperAdminTenantsPage() {
             {tenants.map((tenant) => (
               <tr key={tenant.id} className="border-t border-gray-100 hover:bg-gray-50 transition-colors">
                 <td className="px-4 py-2 text-gray-900">
-                  <Link to={`/super-admin/tenants/${tenant.id}`} className="hover:underline text-blue-600">
+                  <Link to={`/super-admin/tenants/${tenant.id}`} className="hover:underline text-blue-600 font-medium">
                     {tenant.name}
                   </Link>
+                  <div className="text-xs text-gray-500">
+                    {tenant.users?.[0]?.fullName ?? "—"}
+                    {tenant.settings?.phone && (
+                      <>
+                        {" · "}
+                        <a
+                          href={`https://wa.me/${tenant.settings.phone.replace(/\D/g, "")}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="whitespace-nowrap text-green-700 hover:underline"
+                          title={t("superadmin.activity.whatsapp", "WhatsApp the owner")}
+                        >
+                          {displayPhone(tenant.settings.phone)}
+                        </a>
+                      </>
+                    )}
+                  </div>
                 </td>
+                <td className="px-4 py-2">{tenant.activity && <ActivityBadge level={tenant.activity.level} />}</td>
+                <td className="px-4 py-2 text-right tabular-nums text-gray-700">{tenant.activity?.salesLast7Days ?? 0}</td>
+                <td className="px-4 py-2 text-right tabular-nums text-gray-700">{tenant.activity?.products ?? tenant._count.products ?? 0}</td>
+                <td className="px-4 py-2 text-gray-600 whitespace-nowrap">{ago(tenant.activity?.lastActiveAt ?? null, t)}</td>
                 <td className="px-4 py-2">
                   <StatusBadge status={tenant.status} />
                 </td>
-                <td className="px-4 py-2 text-gray-600">{tenant._count.users}</td>
                 <td className="px-4 py-2 text-gray-600">{new Date(tenant.createdAt).toLocaleDateString()}</td>
                 <td className="px-4 py-2 text-right">
                   <button onClick={() => toggleStatus(tenant)} className="text-blue-600 hover:underline">
@@ -148,6 +199,14 @@ export function SuperAdminTenantsPage() {
           </tbody>
         </table>
       </div>
+
+      <dl className="mt-3 grid gap-x-6 gap-y-1 text-xs text-gray-500 sm:grid-cols-2">
+        <div><ActivityBadge level="active" /> {t("superadmin.activity.help.active", "sold on 3 or more of the last 7 days")}</div>
+        <div><ActivityBadge level="trying" /> {t("superadmin.activity.help.trying", "added products or some sales, not regular yet")}</div>
+        <div><ActivityBadge level="new" /> {t("superadmin.activity.help.new", "registered in the last 2 days")}</div>
+        <div><ActivityBadge level="signed_up_only" /> {t("superadmin.activity.help.signed", "no products or sales after 2 days: call them")}</div>
+        <div><ActivityBadge level="quiet" /> {t("superadmin.activity.help.quiet", "used to sell, nothing in 7 days: follow up")}</div>
+      </dl>
 
       {pagination && <Pagination pagination={pagination} onPageChange={setPage} />}
     </div>
@@ -169,4 +228,23 @@ function StatusBadge({ status }: { status: TenantStatus }) {
     CANCELLED: t("superadmin.tenants.status.cancelled", "CANCELLED"),
   };
   return <span className={`badge ${colors[status]}`}>{labels[status]}</span>;
+}
+
+function ActivityBadge({ level }: { level: ActivityLevel }) {
+  const { t } = useLanguage();
+  const styles: Record<ActivityLevel, string> = {
+    active: "bg-green-100 text-green-700",
+    trying: "bg-amber-100 text-amber-800",
+    new: "bg-blue-100 text-blue-700",
+    signed_up_only: "bg-gray-100 text-gray-600",
+    quiet: "bg-red-100 text-red-700",
+  };
+  const labels: Record<ActivityLevel, string> = {
+    active: t("superadmin.activity.active", "Active"),
+    trying: t("superadmin.activity.trying", "Trying"),
+    new: t("superadmin.activity.new", "New"),
+    signed_up_only: t("superadmin.activity.signedUp", "Signed up only"),
+    quiet: t("superadmin.activity.quiet", "Gone quiet"),
+  };
+  return <span className={`badge whitespace-nowrap ${styles[level]}`}>{labels[level]}</span>;
 }

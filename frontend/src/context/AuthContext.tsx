@@ -14,6 +14,7 @@ interface RegisterInput {
   businessName: string;
   ownerFullName: string;
   ownerEmail: string;
+  ownerPhone: string;
   ownerPassword: string;
   industry: string;
 }

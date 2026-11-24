@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { db } from "@/config/db";
 
 // "Today" in East Africa Time (UTC+3, no daylight saving), regardless of
@@ -209,4 +210,137 @@ export async function getSalesByPaymentMethod(tenantId: string, days: number) {
       AND s.status = 'COMPLETED'
     GROUP BY pay.method
   `;
+}
+// ---------------------------------------------------------------------------
+// Shop dashboard (BizSmart layout): month totals, a 6-month chart, today's
+// figures, recent sales and the value of the stock on hand. One request.
+// Months and days are East Africa Time.
+// ---------------------------------------------------------------------------
+
+const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const EAT_MONTH = Prisma.sql`to_char((("createdAt" AT TIME ZONE 'UTC') AT TIME ZONE 'Africa/Dar_es_Salaam'), 'YYYY-MM')`;
+
+export async function getShopOverview(tenantId: string, monthsBack = 6) {
+  const local = new Date(Date.now() + BUSINESS_UTC_OFFSET_MS);
+  const y = local.getUTCFullYear();
+  const m = local.getUTCMonth();
+  const from = new Date(Date.UTC(y, m - (monthsBack - 1), 1) - BUSINESS_UTC_OFFSET_MS);
+  const { start: todayStart } = getTodayRange();
+
+  const [revenueRows, cogsRows, expenseRows, today, productCount, lowStock, stockRows, recent] = await Promise.all([
+    db.$queryRaw<{ month: string; total: string }[]>`
+      SELECT ${EAT_MONTH} AS month, SUM(total) AS total
+      FROM sales
+      WHERE "tenantId" = ${tenantId} AND status = 'COMPLETED' AND "createdAt" >= ${from}
+      GROUP BY 1`,
+    db.$queryRaw<{ month: string; total: string }[]>`
+      SELECT to_char(((s."createdAt" AT TIME ZONE 'UTC') AT TIME ZONE 'Africa/Dar_es_Salaam'), 'YYYY-MM') AS month,
+             SUM(p."purchasePrice" * si.quantity) AS total
+      FROM sale_items si
+      JOIN sales s ON s.id = si."saleId"
+      JOIN products p ON p.id = si."productId"
+      WHERE s."tenantId" = ${tenantId} AND s.status = 'COMPLETED' AND s."createdAt" >= ${from}
+      GROUP BY 1`,
+    db.$queryRaw<{ month: string; total: string }[]>`
+      SELECT to_char(((date AT TIME ZONE 'UTC') AT TIME ZONE 'Africa/Dar_es_Salaam'), 'YYYY-MM') AS month,
+             SUM(amount) AS total
+      FROM expenses
+      WHERE "tenantId" = ${tenantId} AND date >= ${from}
+      GROUP BY 1`,
+    getSummary(tenantId),
+    db.product.count({ where: { tenantId, status: "ACTIVE" } }),
+    db.$queryRaw<{ n: number }[]>`
+      SELECT COUNT(*)::int AS n FROM products
+      WHERE "tenantId" = ${tenantId} AND status = 'ACTIVE' AND "stockQuantity" <= "minStockLevel"`,
+    db.$queryRaw<
+      { id: string; name: string; stockQuantity: number; minStockLevel: number; purchasePrice: string; sellingPrice: string }[]
+    >`
+      SELECT id, name, "stockQuantity", "minStockLevel", "purchasePrice", "sellingPrice"
+      FROM products
+      WHERE "tenantId" = ${tenantId} AND status = 'ACTIVE'
+      ORDER BY "purchasePrice" * GREATEST("stockQuantity", 0) DESC, name ASC
+      LIMIT 50`,
+    db.sale.findMany({
+      where: { tenantId, status: "COMPLETED" },
+      orderBy: { createdAt: "desc" },
+      take: 6,
+      select: {
+        id: true,
+        total: true,
+        createdAt: true,
+        customer: { select: { fullName: true } },
+        payments: { select: { method: true } },
+        _count: { select: { items: true } },
+      },
+    }),
+  ]);
+
+  const byMonth = (rows: { month: string; total: string }[]) => new Map(rows.map((r) => [r.month, Number(r.total)]));
+  const rev = byMonth(revenueRows);
+  const cogs = byMonth(cogsRows);
+  const exp = byMonth(expenseRows);
+
+  const months = Array.from({ length: monthsBack }, (_, i) => {
+    const d = new Date(Date.UTC(y, m - (monthsBack - 1) + i, 1));
+    const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+    const revenue = rev.get(key) ?? 0;
+    const costOfGoods = cogs.get(key) ?? 0;
+    const expenses = exp.get(key) ?? 0;
+    return {
+      month: key,
+      label: MONTH_NAMES[d.getUTCMonth()],
+      revenue,
+      costOfGoods,
+      expenses,
+      profit: revenue - costOfGoods - expenses,
+    };
+  });
+  const thisMonth = months[months.length - 1];
+
+  const stock = stockRows.map((p) => {
+    const cost = Number(p.purchasePrice);
+    const qty = Math.max(0, p.stockQuantity);
+    return {
+      id: p.id,
+      name: p.name,
+      stockQuantity: p.stockQuantity,
+      minStockLevel: p.minStockLevel,
+      purchasePrice: cost,
+      sellingPrice: Number(p.sellingPrice),
+      stockValue: cost * qty,
+      low: p.stockQuantity <= p.minStockLevel,
+    };
+  });
+  const valuation = await db.$queryRaw<{ cost: string; retail: string }[]>`
+    SELECT COALESCE(SUM("purchasePrice" * GREATEST("stockQuantity", 0)), 0) AS cost,
+           COALESCE(SUM("sellingPrice" * GREATEST("stockQuantity", 0)), 0) AS retail
+    FROM products WHERE "tenantId" = ${tenantId} AND status = 'ACTIVE'`;
+
+  return {
+    thisMonth,
+    months,
+    today: {
+      sales: Number(today.todaySales),
+      salesCount: today.todaySalesCount,
+      profit: today.todayProfit,
+      expenses: Number(today.todayExpenses),
+      since: todayStart,
+    },
+    products: { count: productCount, lowStock: lowStock[0]?.n ?? 0 },
+    stock: {
+      costValue: Number(valuation[0]?.cost ?? 0),
+      retailValue: Number(valuation[0]?.retail ?? 0),
+      items: stock,
+      shown: stock.length,
+      total: productCount,
+    },
+    recentSales: recent.map((s) => ({
+      id: s.id,
+      customer: s.customer?.fullName ?? null,
+      total: Number(s.total),
+      createdAt: s.createdAt,
+      itemCount: s._count.items,
+      methods: [...new Set(s.payments.map((p) => p.method))],
+    })),
+  };
 }

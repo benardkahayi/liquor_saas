@@ -13,6 +13,7 @@ export function RegisterPage() {
   const [industry, setIndustry] = useState<string>("");
   const [ownerFullName, setOwnerFullName] = useState("");
   const [ownerEmail, setOwnerEmail] = useState("");
+  const [ownerPhone, setOwnerPhone] = useState("");
   const [ownerPassword, setOwnerPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -38,7 +39,7 @@ export function RegisterPage() {
 
     setIsSubmitting(true);
     try {
-      const { tenantSlug } = await register({ businessName, ownerFullName, ownerEmail, ownerPassword, industry });
+      const { tenantSlug } = await register({ businessName, ownerFullName, ownerEmail, ownerPhone, ownerPassword, industry });
       if (tenantSlug) {
         goToTenant(tenantSlug, "/dashboard");
       } else {
@@ -120,6 +121,19 @@ export function RegisterPage() {
           value={ownerEmail}
           onChange={setOwnerEmail}
         />
+        <div>
+          <AuthInput
+            label={t("register.phone", "Phone number")}
+            type="tel"
+            autoComplete="tel"
+            required
+            value={ownerPhone}
+            onChange={setOwnerPhone}
+          />
+          <p className="mt-1 text-xs text-[#6B7772]">
+            {t("register.phoneHint", "e.g. 0712 345 678. We may call to help you get started.")}
+          </p>
+        </div>
 
         <div>
           <AuthInput

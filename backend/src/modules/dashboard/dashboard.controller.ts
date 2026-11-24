@@ -61,3 +61,12 @@ export async function getSalesByPaymentMethodHandler(
     next(err);
   }
 }
+
+export async function getShopOverviewHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await dashboardService.getShopOverview(req.user!.tenantId!);
+    res.status(200).json({ data: result });
+  } catch (err) {
+    next(err);
+  }
+}
