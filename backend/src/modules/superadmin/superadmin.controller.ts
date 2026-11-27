@@ -11,6 +11,7 @@ import {
   deleteTenantSchema,
 } from "./superadmin.validation";
 import * as superAdminService from "./superadmin.service";
+import { getOverview } from "./overview";
 import { db } from "@/config/db";
 import { EmailError, emailSetup, sendEmail } from "@/common/utils/mailer";
 
@@ -120,6 +121,14 @@ export async function paymentsOverviewHandler(req: Request, res: Response, next:
 export async function activityHandler(_req: Request, res: Response, next: NextFunction) {
   try {
     res.status(200).json({ data: await superAdminService.getActivity(10) });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function overviewHandler(_req: Request, res: Response, next: NextFunction) {
+  try {
+    res.status(200).json({ data: await getOverview() });
   } catch (err) {
     next(err);
   }

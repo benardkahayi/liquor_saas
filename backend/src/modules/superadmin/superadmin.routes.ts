@@ -13,6 +13,7 @@ import {
   listPaymentsHandler,
   paymentsOverviewHandler,
   activityHandler,
+  overviewHandler,
   emailStatusHandler,
   emailTestHandler,
   deleteTenantHandler,
@@ -34,6 +35,7 @@ router.put("/users/:id/status", updateUserStatusHandler);
 router.get("/payments", listPaymentsHandler);
 router.get("/payments/overview", paymentsOverviewHandler);
 router.get("/activity", activityHandler);
+router.get("/overview", overviewHandler);
 router.get("/email", emailStatusHandler);
 router.post("/email/test", emailTestHandler);
 
