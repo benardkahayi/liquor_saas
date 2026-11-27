@@ -4,9 +4,9 @@ import { NotFoundError } from "@/common/errors/AppError";
 
 interface CreateCustomerInput {
   fullName: string;
-  email?: string;
-  phone?: string;
-  address?: string;
+  email?: string | null;
+  phone?: string | null;
+  address?: string | null;
 }
 
 export async function createCustomer(tenantId: string, input: CreateCustomerInput) {
@@ -107,4 +107,4 @@ export async function deleteCustomer(tenantId: string, customerId: string) {
   }
 
   return db.customer.delete({ where: { id: customerId } });
-}
+}

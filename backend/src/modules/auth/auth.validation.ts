@@ -1,4 +1,7 @@
 import { z } from "zod";
+import { normalizePhone, PHONE_HINT } from "@/common/utils/phone";
+
+export { normalizePhone };
 import { BUSINESS_TYPES } from "@/common/constants/businessTypes";
 
 // zod schemas validate incoming request bodies at the "edge" of our API —
@@ -7,24 +10,13 @@ import { BUSINESS_TYPES } from "@/common/constants/businessTypes";
 // (e.g. a missing password, an email with no @) travel deeper into the
 // system where it's harder to trace back to "the request was malformed."
 
-// Tanzanian mobile numbers in any common form (0712 345 678, 255712345678,
-// +255 712 345 678) become +255712345678. Other countries: +<code><number>.
-export function normalizePhone(raw: string): string | null {
-  const s = raw.replace(/[\s\-().]/g, "");
-  if (/^0[67]\d{8}$/.test(s)) return "+255" + s.slice(1);
-  if (/^255[67]\d{8}$/.test(s)) return "+" + s;
-  if (/^\+255[67]\d{8}$/.test(s)) return s;
-  if (/^\+(?!255)\d{9,15}$/.test(s)) return s;
-  return null;
-}
-
 const phoneSchema = z
   .string()
   .trim()
   .transform((v, ctx) => {
     const p = normalizePhone(v);
     if (!p) {
-      ctx.addIssue({ code: "custom", message: "Enter a valid phone number, e.g. 0712 345 678" });
+      ctx.addIssue({ code: "custom", message: PHONE_HINT });
       return z.NEVER;
     }
     return p;

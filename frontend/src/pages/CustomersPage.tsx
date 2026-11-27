@@ -4,6 +4,7 @@ import { useLanguage } from "../context/LanguageContext";
 import { Modal } from "../components/Modal";
 import { Pagination } from "../components/Pagination";
 import { ErrorBanner, extractErrorMessage } from "../components/ErrorBanner";
+import { displayPhone } from "../lib/phone";
 
 interface Customer {
   id: string;
@@ -109,7 +110,7 @@ export function CustomersPage() {
               <tr key={customer.id} className="border-t border-gray-100 hover:bg-gray-50 transition-colors">
                 <td className="px-4 py-2 text-gray-900">{customer.fullName}</td>
                 <td className="px-4 py-2 text-gray-600">{customer.email ?? "—"}</td>
-                <td className="px-4 py-2 text-gray-600">{customer.phone ?? "—"}</td>
+                <td className="px-4 py-2 text-gray-600 whitespace-nowrap">{displayPhone(customer.phone)}</td>
                 <td className="px-4 py-2 text-right space-x-3 whitespace-nowrap">
                   <button onClick={() => setEditing(customer)} className="text-blue-600 hover:underline">
                     {t("common.edit", "Edit")}
@@ -159,7 +160,7 @@ function CustomerFormModal({
       ? {
           fullName: customer.fullName,
           email: customer.email ?? "",
-          phone: customer.phone ?? "",
+          phone: customer.phone ? displayPhone(customer.phone) : "",
           address: customer.address ?? "",
         }
       : EMPTY_FORM
@@ -173,10 +174,12 @@ function CustomerFormModal({
     setIsSubmitting(true);
 
     const payload = {
+      // Empty boxes are sent as empty: the server leaves them blank when
+      // adding and clears them when editing.
       fullName: form.fullName,
-      email: form.email || undefined,
-      phone: form.phone || undefined,
-      address: form.address || undefined,
+      email: form.email,
+      phone: form.phone,
+      address: form.address,
     };
 
     try {
