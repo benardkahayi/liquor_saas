@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import * as reportsService from "./reports.service";
+import { buildSalesPdf } from "./reports.pdf";
 
 function defaultMonthRange() {
   const now = new Date();
@@ -63,6 +64,28 @@ export async function getExpensesByCategoryHandler(
       endDate: query.endDate ?? defaults.endDate,
     });
     res.status(200).json({ data: result });
+  } catch (err) {
+    next(err);
+  }
+}
+
+const salesPdfQuerySchema = z.object({
+  period: z.enum(["week", "month"]).default("week"),
+  date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Use the format YYYY-MM-DD")
+    .optional(),
+  lang: z.enum(["sw", "en"]).default("sw"),
+});
+
+export async function getSalesPdfHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const query = salesPdfQuerySchema.parse(req.query);
+    const { buffer, filename } = await buildSalesPdf(req.user!.tenantId!, query);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.setHeader("Cache-Control", "no-store");
+    res.status(200).send(buffer);
   } catch (err) {
     next(err);
   }

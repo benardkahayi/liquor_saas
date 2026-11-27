@@ -77,6 +77,14 @@ export async function checkProductLimit(tenantId: string) {
   return { limitReached: false };
 }
 
+// How many more active products this business may add (null = no limit).
+export async function productSlotsLeft(tenantId: string): Promise<number | null> {
+  const plan = await planFor(tenantId);
+  if (plan.products === null) return null;
+  const currentCount = await db.product.count({ where: { tenantId, status: "ACTIVE" } });
+  return Math.max(plan.products - currentCount, 0);
+}
+
 export async function checkMenuItemLimit(tenantId: string) {
   const plan = await planFor(tenantId);
   if (plan.products === null) return;

@@ -1,5 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { FileDown } from "lucide-react";
 import { api } from "../api/client";
+import { downloadBlob } from "../lib/csv";
 import { money } from "../lib/money";
 import { useLanguage } from "../context/LanguageContext";
 import { ErrorBanner, extractErrorMessage } from "../components/ErrorBanner";
@@ -76,7 +78,9 @@ export function ReportsPage() {
 
       <ErrorBanner message={error} />
 
-      <div className="flex gap-4 mb-6">
+      <PdfReportCard />
+
+      <div className="flex flex-wrap gap-4 mb-6">
         <div>
           <label className="block text-xs font-medium text-gray-500 mb-1">{t("reports.startDate", "Start Date")}</label>
           <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="input" />
@@ -87,7 +91,7 @@ export function ReportsPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <section className="card p-4">
           <h2 className="font-semibold text-gray-900 mb-3">{t("reports.sales", "Sales")}</h2>
           {salesReport ? (
@@ -150,5 +154,110 @@ function Row({ label, value }: { label: string; value: string }) {
       <span>{label}</span>
       <span className="text-gray-900 font-medium">{value}</span>
     </div>
+  );
+}
+
+type Period = "week" | "month";
+
+const pad = (n: number) => String(n).padStart(2, "0");
+const iso = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const dmy = (d: Date) => `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+
+const MONTHS = {
+  en: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+  sw: ["Januari", "Februari", "Machi", "Aprili", "Mei", "Juni", "Julai", "Agosti", "Septemba", "Oktoba", "Novemba", "Desemba"],
+};
+
+function PdfReportCard() {
+  const { t, language } = useLanguage();
+  const [period, setPeriod] = useState<Period>("week");
+  const [choice, setChoice] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // The last 12 weeks (Monday to Sunday) or the last 12 months.
+  const options = useMemo(() => {
+    const today = new Date();
+    today.setHours(12, 0, 0, 0);
+    if (period === "week") {
+      const monday = new Date(today);
+      monday.setDate(today.getDate() - ((today.getDay() + 6) % 7));
+      return Array.from({ length: 12 }, (_, i) => {
+        const start = new Date(monday);
+        start.setDate(monday.getDate() - 7 * i);
+        const end = new Date(start);
+        end.setDate(start.getDate() + 6);
+        const prefix =
+          i === 0 ? t("reports.pdf.thisWeek", "This week") : i === 1 ? t("reports.pdf.lastWeek", "Last week") : null;
+        return { date: iso(start), label: `${prefix ? prefix + ": " : ""}${dmy(start)} - ${dmy(end)}` };
+      });
+    }
+    return Array.from({ length: 12 }, (_, i) => {
+      const d = new Date(today.getFullYear(), today.getMonth() - i, 1, 12);
+      return { date: iso(d), label: `${MONTHS[language][d.getMonth()]} ${d.getFullYear()}` };
+    });
+  }, [period, language, t]);
+
+  async function download() {
+    setBusy(true);
+    setError(null);
+    try {
+      const opt = options[choice] ?? options[0];
+      const res = await api.get("/reports/sales-pdf", {
+        params: { period, date: opt.date, lang: language },
+        responseType: "blob",
+      });
+      const disposition = String(res.headers["content-disposition"] ?? "");
+      const name = /filename="([^"]+)"/.exec(disposition)?.[1] ?? `sales-${period}-${opt.date}.pdf`;
+      downloadBlob(res.data as Blob, name);
+    } catch (err) {
+      setError(extractErrorMessage(err, t("reports.pdf.error", "Could not create the PDF report")));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="card p-4 mb-6">
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="mr-auto">
+          <h2 className="font-semibold text-gray-900">{t("reports.pdf.title", "Sales report (PDF)")}</h2>
+          <p className="text-sm text-gray-500">
+            {t("reports.pdf.subtitle", "Totals, sales per day, top products, payments, expenses and profit.")}
+          </p>
+        </div>
+        <div className="inline-flex rounded-lg border border-gray-200 overflow-hidden">
+          {(["week", "month"] as Period[]).map((p) => (
+            <button
+              key={p}
+              type="button"
+              onClick={() => {
+                setPeriod(p);
+                setChoice(0);
+              }}
+              className={`px-3 py-2 text-sm ${period === p ? "bg-amber-500 text-white" : "bg-white text-gray-700 hover:bg-gray-50"}`}
+            >
+              {p === "week" ? t("reports.pdf.week", "Weekly") : t("reports.pdf.month", "Monthly")}
+            </button>
+          ))}
+        </div>
+        <select value={choice} onChange={(e) => setChoice(Number(e.target.value))} className="input w-auto min-w-[220px]">
+          {options.map((o, i) => (
+            <option key={o.date} value={i}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          onClick={download}
+          disabled={busy}
+          className="btn-primary px-4 py-2 text-sm inline-flex items-center gap-2 disabled:opacity-50"
+        >
+          <FileDown size={16} /> {busy ? t("reports.pdf.preparing", "Preparing...") : t("reports.pdf.download", "Download PDF")}
+        </button>
+      </div>
+      {error && <p className="text-sm text-red-600 mt-2">{error}</p>}
+    </section>
   );
 }

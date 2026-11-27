@@ -4,12 +4,13 @@ interface ModalProps {
   title: string;
   onClose: () => void;
   children: ReactNode;
+  wide?: boolean;
 }
 
-export function Modal({ title, onClose, children }: ModalProps) {
+export function Modal({ title, onClose, children, wide = false }: ModalProps) {
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
-      <div className="w-full max-w-lg bg-white rounded-xl shadow-lg border border-gray-200 max-h-[90vh] overflow-y-auto">
+      <div className={`w-full ${wide ? "max-w-3xl" : "max-w-lg"} bg-white rounded-xl shadow-lg border border-gray-200 max-h-[90vh] overflow-y-auto`}>
         <div className="flex justify-between items-center px-4 py-4 border-b border-gray-200 sm:px-6">
           <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
           <button

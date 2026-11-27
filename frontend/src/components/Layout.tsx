@@ -55,7 +55,7 @@ const NAV_ITEMS: (NavItem & { for: NavAudience })[] = [
   { to: "/restaurant/menu", labelKey: "nav.restaurantMenu", labelEn: "Food Menu", icon: UtensilsCrossed, color: "text-amber-500", for: "restaurant" },
   { to: "/restaurant/tables", labelKey: "nav.restaurantTables", labelEn: "Tables", icon: Users, color: "text-purple-500", for: "restaurant" },
   { to: "/products", labelKey: "nav.products", labelEn: "Products", icon: Package, color: "text-blue-500", for: "shop" },
-  { to: "/inventory", labelKey: "nav.inventory", labelEn: "Inventory", icon: PackagePlus, color: "text-green-500", for: "shop" },
+  { to: "/inventory", labelKey: "nav.inventory", labelEn: "Stock", icon: PackagePlus, color: "text-green-500", for: "shop" },
   { to: "/sales", labelKey: "nav.sales", labelEn: "Sales", icon: ShoppingCart, color: "text-emerald-500", for: "shop" },
   { to: "/customers", labelKey: "nav.customers", labelEn: "Customers", icon: Users, color: "text-blue-500", for: "all" },
   { to: "/suppliers", labelKey: "nav.suppliers", labelEn: "Suppliers", icon: Truck, color: "text-amber-500", for: "all" },

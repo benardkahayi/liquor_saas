@@ -7,6 +7,7 @@ import {
   getInventoryValuationHandler,
   getSalesReportHandler,
   getExpensesByCategoryHandler,
+  getSalesPdfHandler,
 } from "./reports.controller";
 
 const router = Router();
@@ -20,6 +21,7 @@ router.get(
   getInventoryValuationHandler
 );
 router.get("/sales", requirePermission("reports.view"), getSalesReportHandler);
+router.get("/sales-pdf", requirePermission("reports.view"), getSalesPdfHandler);
 router.get(
   "/expenses-by-category",
   requirePermission("reports.view"),
